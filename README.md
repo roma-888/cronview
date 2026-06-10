@@ -54,7 +54,7 @@ npm run demo                 # from a checkout: tour with examples/sample.cronta
 | `t` | jump to today |
 | `a` | toggle 12/24-hour clock |
 | `e` | edit the crontab in `$EDITOR` (`crontab -e` for your user crontab), reload on exit |
-| `1`–`9` | peek at a job's output log (numbers in the detail pane) |
+| `1`–`9` | open a job's view: schedule in plain English, next runs, output log |
 | `q` / `Esc` | quit (closes the log peek first) |
 
 These are the only bindings — every other key (and any modifier combo) is deliberately inert.
@@ -68,9 +68,14 @@ The layout fills the terminal at any size: columns split the full width, month c
 
 The calendar live-reloads: cronview polls the crontab every few seconds and refreshes when it changes — whether you press `e` to edit it in place or change it from another terminal.
 
-### Log peek
+### Job view
 
-Detail-pane rows are numbered; press a job's number to open the tail of its log. cronview finds the log by reading the job's own redirect (`>> /var/log/thing.log`), expanding `~` and `$VAR`s from the crontab's env lines. Jobs that redirect to `/dev/null` or don't redirect at all get a note explaining where the output went (discarded, or mailed by cron). `↑`/`↓` scrolls, `q`/`Esc` closes.
+Detail-pane rows are numbered; press a job's number to open everything about it:
+
+- **The schedule in plain English** — `*/10 9-17 * * 1-5` becomes "every 10 minutes, 09:00–17:59, Mon–Fri" — plus the next 5 concrete run times.
+- **The tail of its log.** cronview finds the log by reading the job's own redirect (`>> /var/log/thing.log`), expanding `~` and `$VAR`s from the crontab's env lines. Jobs that redirect to `/dev/null` or don't redirect at all get a note explaining where the output went (discarded, or mailed by cron).
+
+`↑`/`↓` scrolls the log, `q`/`Esc` closes.
 
 ## What it understands
 

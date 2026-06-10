@@ -12,7 +12,8 @@ import {
   startOfDay,
   weeksInMonthGrid,
 } from "../dates";
-import { dayInfosForRange, nextRunAcross, runsInHour } from "../schedule";
+import { dayInfosForRange, nextRunAcross, nextRuns, runsInHour } from "../schedule";
+import { explainSchedule } from "../explain";
 import { outputTarget, readLogTail, type LogTail, type OutputTarget } from "../logs";
 import type { CronJob } from "../types";
 import { MonthView } from "./MonthView";
@@ -229,6 +230,9 @@ export function App({
         job={log.job}
         target={log.target}
         tail={log.tail}
+        explanation={explainSchedule(log.job.expression, hourFormat)}
+        upcoming={nextRuns(log.job, new Date(), 5)}
+        hourFormat={hourFormat}
         width={width}
         height={height}
         scroll={logScroll}

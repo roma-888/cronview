@@ -395,6 +395,15 @@ describe("App (log peek)", () => {
     setup.renderer.destroy();
   });
 
+  test("the job overlay explains the schedule and lists upcoming runs", async () => {
+    const setup = await renderLogApp();
+    await press(setup, "1");
+    const overlay = setup.captureCharFrame();
+    expect(overlay).toContain("every day at 00:00"); // @daily explained
+    expect(overlay).toMatch(/next: \w{3} \w{3} \d{1,2} \d{2}:\d{2}/);
+    setup.renderer.destroy();
+  });
+
   test("pressing a job's number opens its log tail; q returns to the calendar", async () => {
     const setup = await renderLogApp();
     await press(setup, "1");

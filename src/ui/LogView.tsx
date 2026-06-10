@@ -1,23 +1,42 @@
-import type { CronJob } from "../types";
+import type { CronJob, HourFormat } from "../types";
 import type { LogTail, OutputTarget } from "../logs";
+import { DAY_NAMES, MONTH_NAMES, formatHM } from "../dates";
 import { UI, truncate } from "./theme";
 
 interface LogViewProps {
   job: CronJob;
   target: OutputTarget;
   tail: LogTail | null;
+  /** Plain-English schedule, e.g. "every day at 02:30". */
+  explanation: string;
+  /** Upcoming run times. */
+  upcoming: Date[];
+  hourFormat: HourFormat;
   width: number;
   height: number;
   /** Lines scrolled back from the end of the tail. */
   scroll: number;
 }
 
-/** Rows available for log content: everything but the header and footer. */
+/**
+ * Rows available for log content: everything but the header, the schedule
+ * and next-runs lines, the log meta line, and the footer.
+ */
 export function logContentRows(height: number): number {
-  return Math.max(1, height - 2);
+  return Math.max(1, height - 5);
 }
 
-export function LogView({ job, target, tail, width, height, scroll }: LogViewProps) {
+export function LogView({
+  job,
+  target,
+  tail,
+  explanation,
+  upcoming,
+  hourFormat,
+  width,
+  height,
+  scroll,
+}: LogViewProps) {
   const rows = logContentRows(height);
 
   let body: string[];
@@ -42,17 +61,31 @@ export function LogView({ job, target, tail, width, height, scroll }: LogViewPro
 
   const meta =
     target.kind === "file" ? ` · ${target.path}${tail ? ` · ${formatSize(tail.size)}` : ""}` : "";
+  const nextLabel = upcoming
+    .map(
+      (d) =>
+        `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]!.slice(0, 3)} ${d.getDate()} ${formatHM(d, hourFormat)}`,
+    )
+    .join(" · ");
 
   return (
     <box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
       <box style={{ height: 1, backgroundColor: UI.headerBg }}>
         <text>
-          <span fg={UI.accent}>{" log "}</span>
+          <span fg={UI.accent}>{" job "}</span>
           <span fg={job.color}>{"● "}</span>
-          <span fg={UI.text}>{truncate(job.command, Math.max(8, width - meta.length - 8))}</span>
-          <span fg={UI.dim}>{meta}</span>
+          <span fg={UI.text}>{truncate(job.command, Math.max(8, width - 8))}</span>
         </text>
       </box>
+      <text>
+        <span fg={UI.dim}>{` ${job.schedule}  —  `}</span>
+        <span fg={UI.text}>{truncate(explanation, Math.max(8, width - job.schedule.length - 7))}</span>
+      </text>
+      <text>
+        <span fg={UI.dim}>{" next: "}</span>
+        <span fg={UI.text}>{truncate(nextLabel, Math.max(8, width - 8))}</span>
+      </text>
+      <text fg={UI.dim}>{truncate(` log${meta}`, width - 1)}</text>
       <box style={{ flexDirection: "column", flexGrow: 1, paddingLeft: 1 }}>
         {body.map((line, i) => (
           <text key={i} fg={UI.text}>

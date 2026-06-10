@@ -104,6 +104,18 @@ export function runsInHour(info: JobDayInfo, hour: number): number {
   return info.hours.includes(hour) ? info.minutes.length : 0;
 }
 
+/** The next n runs of one job from a given time (fewer if it stops matching). */
+export function nextRuns(job: CronJob, from: Date, n: number): Date[] {
+  const out: Date[] = [];
+  try {
+    const it = CronExpressionParser.parse(job.expression, { currentDate: from });
+    for (let i = 0; i < n; i++) out.push(it.next().toDate());
+  } catch {
+    // iterator exhausted
+  }
+  return out;
+}
+
 /** Next upcoming run across all jobs, from a given time. */
 export function nextRunAcross(jobs: CronJob[], from: Date): { job: CronJob; at: Date } | null {
   let best: { job: CronJob; at: Date } | null = null;
