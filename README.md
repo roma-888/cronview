@@ -60,8 +60,10 @@ npm run demo                 # from a checkout: tour with examples/sample.cronta
 | `t` | jump to today |
 | `a` | toggle 12/24-hour clock |
 | `e` | edit the crontab in `$EDITOR` (`crontab -e` for your user crontab), reload on exit |
-| `1`–`9` | open a job's view: schedule in plain English, next runs, output log |
-| `q` / `Esc` | quit (closes the log peek first) |
+| `/` | filter jobs by command substring (`Enter` apply, `Esc` clear) |
+| `1`–`9` | open a job's view: schedule in plain English, next/recent runs, output log |
+| `?` | help — the full keymap |
+| `q` / `Esc` | quit (closes overlays and clears the filter first) |
 
 These are the only bindings — every other key (and any modifier combo) is deliberately inert.
 
@@ -82,7 +84,7 @@ Detail-pane rows are numbered; press a job's number to open everything about it:
 - **Run history** — the last 5 scheduled runs judged against the system log (last 7 days): `✓` ran, `✗` no record, `?` ambiguous, `·` before log coverage. On Linux the journal attributes runs to exact commands; macOS only records that *a* cron job started each minute, so runs are confirmed per-minute and marked `?` when several jobs share a minute.
 - **The tail of its log.** cronview finds the log by reading the job's own redirect (`>> /var/log/thing.log`), expanding `~` and `$VAR`s from the crontab's env lines. Jobs that redirect to `/dev/null` or don't redirect at all get a note explaining where the output went (discarded, or mailed by cron).
 
-`↑`/`↓` scrolls the log, `q`/`Esc` closes.
+`↑`/`↓` scrolls the log, `r` re-reads it in place, `q`/`Esc` closes.
 
 ## What it understands
 
@@ -90,6 +92,7 @@ Detail-pane rows are numbered; press a job's number to open everything about it:
 - `@hourly` `@daily` `@midnight` `@weekly` `@monthly` `@yearly` `@annually`
 - `@reboot` jobs (shown in the status bar — they have no calendar position)
 - `NAME=value` environment lines and comments
+- `CRON_TZ=Zone` — jobs after it are scheduled in that timezone and shown at your local time (plain `TZ=` is deliberately ignored: it affects the command's environment, not the schedule)
 - Vixie-cron OR semantics when both day-of-month and day-of-week are restricted
 
 Unparsable lines never crash the app; they're counted in the status bar (`⚠ n lines skipped`).
