@@ -8,8 +8,21 @@ permissions:
   contents: write
 
 jobs:
+  # The release is created once, up front — letting the matrix jobs race to
+  # create it produces duplicate drafts and already_exists failures.
+  create-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Create release for tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME"
+
   build:
     name: ${{ matrix.asset }}
+    needs: create-release
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
