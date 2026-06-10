@@ -1,7 +1,7 @@
 import { parseDateArg } from "./dates";
 import type { HourFormat, ViewMode } from "./types";
 
-export const VERSION = "0.5.0";
+export const VERSION = "0.6.0";
 
 /** One source of truth for the keymap: --help and the ? overlay both render it. */
 export const KEYMAP: ReadonlyArray<readonly [string, string]> = [
