@@ -20,7 +20,13 @@ Built with [OpenTUI](https://github.com/anomalyco/opentui) and [cron-parser](htt
 
 ## Install
 
-Single self-contained binary — no runtime needed:
+Single self-contained binary — no runtime needed. With [Homebrew](https://brew.sh):
+
+```sh
+brew install roma-888/tap/cronview
+```
+
+Or with the install script:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/roma-888/cronview/main/scripts/install.sh | bash
