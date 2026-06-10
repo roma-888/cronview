@@ -108,3 +108,32 @@ describe("nextRunAcross", () => {
     expect(next!.at.getHours()).toBe(8);
   });
 });
+
+describe("CRON_TZ scheduling", () => {
+  // bun:test pins TZ=UTC, so a non-UTC cron zone makes tz handling observable:
+  // noon in New York (EDT, UTC-4 in June) is 16:00 UTC.
+  const nyNoon: CronJob = {
+    id: 0,
+    schedule: "0 12 * * *",
+    expression: "0 12 * * *",
+    command: "ny-job",
+    line: 1,
+    color: "#fff",
+    tz: "America/New_York",
+  };
+  const june10 = new Date(2026, 5, 10);
+
+  test("runs are computed in the job's timezone, returned as absolute times", () => {
+    const first = firstRunOnDay(nyNoon, june10);
+    expect(first).not.toBeNull();
+    expect(first!.getTime()).toBe(Date.UTC(2026, 5, 10, 16, 0));
+  });
+
+  test("day info for tz jobs reports viewer-local hours", () => {
+    const info = jobDayInfo(nyNoon, june10);
+    expect(info).not.toBeNull();
+    expect(info!.count).toBe(1);
+    expect(info!.hours).toEqual([16]); // viewer (UTC) hour, not the cron-zone hour 12
+    expect(info!.minutes).toEqual([0]);
+  });
+});

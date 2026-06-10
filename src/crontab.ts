@@ -39,6 +39,10 @@ export function parseCrontab(text: string): ParseResult {
   const warnings: ParseWarning[] = [];
   const env: Record<string, string> = {};
 
+  // CRON_TZ applies to the job lines after it (cronie semantics). Plain TZ is
+  // left alone — it changes the command's environment, not the schedule.
+  let cronTz: string | undefined;
+
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const lineNo = i + 1;
@@ -64,14 +68,24 @@ export function parseCrontab(text: string): ParseResult {
         });
         continue;
       }
-      addJob(jobs, line.startsWith(alias) ? alias : line, expression, command, lineNo);
+      addJob(jobs, line.startsWith(alias) ? alias : line, expression, command, lineNo, cronTz);
       continue;
     }
 
     // Env assignments start with a bare NAME= — schedule lines never do (minute field first).
     const envMatch = ENV_LINE.exec(line);
     if (envMatch) {
-      env[envMatch[1]!] = stripQuotes(envMatch[2]!);
+      const value = stripQuotes(envMatch[2]!);
+      env[envMatch[1]!] = value;
+      if (envMatch[1] === "CRON_TZ") {
+        // cron-parser doesn't validate zones at parse time; Intl does.
+        try {
+          new Intl.DateTimeFormat("en-US", { timeZone: value });
+          cronTz = value;
+        } catch {
+          warnings.push({ line: lineNo, text: raw, error: `invalid CRON_TZ timezone "${value}"` });
+        }
+      }
       continue;
     }
 
@@ -92,7 +106,7 @@ export function parseCrontab(text: string): ParseResult {
       });
       continue;
     }
-    addJob(jobs, expression, expression, command, lineNo);
+    addJob(jobs, expression, expression, command, lineNo, cronTz);
   }
 
   return { jobs, reboots, warnings, env };
@@ -104,9 +118,10 @@ function addJob(
   expression: string,
   command: string,
   line: number,
+  tz: string | undefined,
 ): void {
   const id = jobs.length;
-  jobs.push({ id, schedule, expression, command, line, color: jobColor(id) });
+  jobs.push({ id, schedule, expression, command, line, color: jobColor(id), tz });
 }
 
 function stripQuotes(s: string): string {

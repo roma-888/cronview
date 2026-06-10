@@ -27,6 +27,14 @@ describe("explainSchedule (24-hour)", () => {
   }
 });
 
+describe("explainSchedule (CRON_TZ)", () => {
+  test("appends the zone so wall-times aren't misread", () => {
+    expect(explainSchedule("30 2 * * *", "24", "America/New_York")).toBe(
+      "every day at 02:30 (America/New_York)",
+    );
+  });
+});
+
 describe("explainSchedule (12-hour)", () => {
   test("times follow the clock format", () => {
     expect(explainSchedule("30 19 * * 1,3,5", "12")).toBe("Mon, Wed, Fri at 7:30pm");

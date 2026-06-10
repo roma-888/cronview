@@ -9,6 +9,8 @@ export interface CronJob {
   /** 1-based line number in the source crontab. */
   line: number;
   color: string;
+  /** IANA zone from a preceding CRON_TZ= line; runs are scheduled in it. */
+  tz?: string;
 }
 
 export interface RebootJob {

@@ -80,3 +80,26 @@ describe("parseCrontab", () => {
     expect(jobColor(0)).not.toBe(jobColor(1));
   });
 });
+
+describe("CRON_TZ", () => {
+  test("applies to jobs after the line, not before", () => {
+    const r = parseCrontab(
+      ["0 9 * * * before", "CRON_TZ=America/New_York", "0 9 * * * after"].join("\n"),
+    );
+    expect(r.jobs[0]!.tz).toBeUndefined();
+    expect(r.jobs[1]!.tz).toBe("America/New_York");
+    expect(r.env.CRON_TZ).toBe("America/New_York");
+  });
+
+  test("invalid timezone becomes a warning and is ignored", () => {
+    const r = parseCrontab(["CRON_TZ=Mars/Olympus", "0 9 * * * job"].join("\n"));
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]!.error).toContain("CRON_TZ");
+    expect(r.jobs[0]!.tz).toBeUndefined();
+  });
+
+  test("plain TZ does not affect scheduling", () => {
+    const r = parseCrontab(["TZ=UTC", "0 9 * * * job"].join("\n"));
+    expect(r.jobs[0]!.tz).toBeUndefined();
+  });
+});

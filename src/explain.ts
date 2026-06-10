@@ -6,9 +6,15 @@ import type { HourFormat } from "./types";
  * Render a cron expression as plain English, e.g.
  * "every 10 minutes, 09:00–17:59, Mon–Fri" or "Mon, Wed, Fri at 7:30pm".
  * Common shapes read naturally; exotic ones fall back to correct-but-plain
- * clause lists. Returns the raw expression if it doesn't parse.
+ * clause lists. Returns the raw expression if it doesn't parse. Times are
+ * wall-clock in `tz` when given, so the zone is appended as a reminder.
  */
-export function explainSchedule(expression: string, fmt: HourFormat): string {
+export function explainSchedule(expression: string, fmt: HourFormat, tz?: string): string {
+  const english = explain(expression, fmt);
+  return tz ? `${english} (${tz})` : english;
+}
+
+function explain(expression: string, fmt: HourFormat): string {
   let fields;
   try {
     fields = CronExpressionParser.parse(expression).fields;

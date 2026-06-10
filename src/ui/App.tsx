@@ -264,7 +264,7 @@ export function App({
         job={log.job}
         target={log.target}
         tail={log.tail}
-        explanation={explainSchedule(log.job.expression, hourFormat)}
+        explanation={explainSchedule(log.job.expression, hourFormat, log.job.tz)}
         upcoming={nextRuns(log.job, new Date(), 5)}
         ran={ran}
         hourFormat={hourFormat}

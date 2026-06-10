@@ -42,7 +42,7 @@ function minuteValues(expression: string): number[] {
 export function firstRunOnDay(job: CronJob, day: Date): Date | null {
   const from = new Date(startOfDay(day).getTime() - 1000);
   try {
-    const it = CronExpressionParser.parse(job.expression, { currentDate: from });
+    const it = CronExpressionParser.parse(job.expression, { currentDate: from, tz: job.tz });
     const next = it.next().toDate();
     return next <= endOfDay(day) ? next : null;
   } catch {
@@ -62,12 +62,47 @@ export function runsPerDay(expression: string): number {
 export function jobDayInfo(job: CronJob, day: Date): JobDayInfo | null {
   const first = firstRunOnDay(job, day);
   if (!first) return null;
+  if (job.tz) return tzJobDayInfo(job, day, first);
   return {
     job,
     first,
     count: runsPerDay(job.expression),
     hours: hourValues(job.expression),
     minutes: minuteValues(job.expression),
+  };
+}
+
+/**
+ * Timezone jobs can't use field math: the cron-zone hour fields don't map 1:1
+ * onto the viewer's local hours (offsets, and DST days really have 23/25
+ * hours). Iterate the day's actual runs instead, bounded by every-minute pace.
+ */
+function tzJobDayInfo(job: CronJob, day: Date, first: Date): JobDayInfo {
+  const end = endOfDay(day);
+  const hours = new Set<number>();
+  const minutes = new Set<number>();
+  let count = 0;
+  try {
+    const it = CronExpressionParser.parse(job.expression, {
+      currentDate: new Date(startOfDay(day).getTime() - 1000),
+      tz: job.tz,
+    });
+    while (count < 25 * 60) {
+      const next = it.next().toDate();
+      if (next > end) break;
+      count++;
+      hours.add(next.getHours());
+      minutes.add(next.getMinutes());
+    }
+  } catch {
+    // iterator exhausted mid-day
+  }
+  return {
+    job,
+    first,
+    count,
+    hours: [...hours].sort((a, b) => a - b),
+    minutes: [...minutes].sort((a, b) => a - b),
   };
 }
 
@@ -108,7 +143,7 @@ export function runsInHour(info: JobDayInfo, hour: number): number {
 export function nextRuns(job: CronJob, from: Date, n: number): Date[] {
   const out: Date[] = [];
   try {
-    const it = CronExpressionParser.parse(job.expression, { currentDate: from });
+    const it = CronExpressionParser.parse(job.expression, { currentDate: from, tz: job.tz });
     for (let i = 0; i < n; i++) out.push(it.next().toDate());
   } catch {
     // iterator exhausted
@@ -120,7 +155,7 @@ export function nextRuns(job: CronJob, from: Date, n: number): Date[] {
 export function prevRuns(job: CronJob, from: Date, n: number): Date[] {
   const out: Date[] = [];
   try {
-    const it = CronExpressionParser.parse(job.expression, { currentDate: from });
+    const it = CronExpressionParser.parse(job.expression, { currentDate: from, tz: job.tz });
     for (let i = 0; i < n; i++) out.push(it.prev().toDate());
   } catch {
     // iterator exhausted
@@ -132,7 +167,7 @@ export function prevRuns(job: CronJob, from: Date, n: number): Date[] {
 export function runsAt(job: CronJob, at: Date): boolean {
   const from = new Date(at.getTime() - 1000);
   try {
-    const it = CronExpressionParser.parse(job.expression, { currentDate: from });
+    const it = CronExpressionParser.parse(job.expression, { currentDate: from, tz: job.tz });
     return it.next().toDate().getTime() === at.getTime();
   } catch {
     return false;
@@ -144,7 +179,7 @@ export function nextRunAcross(jobs: CronJob[], from: Date): { job: CronJob; at: 
   let best: { job: CronJob; at: Date } | null = null;
   for (const job of jobs) {
     try {
-      const it = CronExpressionParser.parse(job.expression, { currentDate: from });
+      const it = CronExpressionParser.parse(job.expression, { currentDate: from, tz: job.tz });
       const at = it.next().toDate();
       if (!best || at < best.at) best = { job, at };
     } catch {
