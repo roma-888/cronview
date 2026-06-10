@@ -11,9 +11,9 @@ A terminal calendar for your cron jobs. See **when** everything runs — in a mo
   ●●●●●●       ●●●●●        ●●●●●        ●●●●●        ●●●●●        ●●●●●        ●●●●
  ─────────────────────────────────────────────────────────────────────────────────────
  Wednesday, June 10, 2026 — 5 jobs, 103 runs
- ● 00:00 ×96         */15 * * * *      /usr/local/bin/health-check --ping
- ● 02:30             30 2 * * *        /usr/local/bin/backup --incremental
- ● 09:00             0 9 * * 1-5       $HOME/scripts/standup-reminder.sh
+ 1 ● 00:00 ×96         */15 * * * *      /usr/local/bin/health-check --ping
+ 2 ● 02:30             30 2 * * *        /usr/local/bin/backup --incremental
+ 3 ● 09:00             0 9 * * 1-5       $HOME/scripts/standup-reminder.sh
 ```
 
 Built with [OpenTUI](https://github.com/anomalyco/opentui) and [cron-parser](https://github.com/harrisiirak/cron-parser).
@@ -84,9 +84,9 @@ Run counts are computed with field math (`|minutes| × |hours|` on matching days
 
 ```sh
 bun install
-bun test              # 52 tests: parser, schedule math, dates, full-UI render tests
+bun test              # 75 tests: parser, schedule math, dates, log discovery, full-UI render tests
 npx tsc --noEmit      # typecheck
-bun scripts/frame.tsx week 120x40   # print a rendered frame without a TTY
+bun scripts/frame.tsx week 120x40 12   # print a rendered frame without a TTY (12/24-hour optional)
 ```
 
 UI tests render the real app headlessly via `@opentui/react/test-utils` and assert on captured frames, including simulated keypresses.
