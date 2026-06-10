@@ -1,7 +1,13 @@
 import type { CronJob, HourFormat } from "../types";
 import type { LogTail, OutputTarget } from "../logs";
+import type { RunStatus } from "../history";
 import { DAY_NAMES, MONTH_NAMES, formatHM } from "../dates";
 import { UI, truncate } from "./theme";
+
+/** Recent scheduled runs judged against the system log, or the load state. */
+export type RanInfo =
+  | "loading"
+  | { items: Array<{ at: Date; status: RunStatus }>; note?: string };
 
 interface LogViewProps {
   job: CronJob;
@@ -11,6 +17,8 @@ interface LogViewProps {
   explanation: string;
   /** Upcoming run times. */
   upcoming: Date[];
+  /** Undefined hides run history entirely. */
+  ran?: RanInfo;
   hourFormat: HourFormat;
   width: number;
   height: number;
@@ -19,12 +27,26 @@ interface LogViewProps {
 }
 
 /**
- * Rows available for log content: everything but the header, the schedule
- * and next-runs lines, the log meta line, and the footer.
+ * Rows available for log content: everything but the header, the schedule,
+ * next-runs and ran lines, the log meta line, and the footer.
  */
 export function logContentRows(height: number): number {
-  return Math.max(1, height - 5);
+  return Math.max(1, height - 6);
 }
+
+const STATUS_GLYPH: Record<RunStatus, string> = {
+  ran: "✓",
+  missing: "✗",
+  ambiguous: "?",
+  unknown: "·",
+};
+
+const STATUS_COLOR: Record<RunStatus, string> = {
+  ran: UI.today,
+  missing: UI.warn,
+  ambiguous: UI.dim,
+  unknown: UI.faint,
+};
 
 export function LogView({
   job,
@@ -32,6 +54,7 @@ export function LogView({
   tail,
   explanation,
   upcoming,
+  ran,
   hourFormat,
   width,
   height,
@@ -61,12 +84,9 @@ export function LogView({
 
   const meta =
     target.kind === "file" ? ` · ${target.path}${tail ? ` · ${formatSize(tail.size)}` : ""}` : "";
-  const nextLabel = upcoming
-    .map(
-      (d) =>
-        `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]!.slice(0, 3)} ${d.getDate()} ${formatHM(d, hourFormat)}`,
-    )
-    .join(" · ");
+  const runLabel = (d: Date) =>
+    `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]!.slice(0, 3)} ${d.getDate()} ${formatHM(d, hourFormat)}`;
+  const nextLabel = upcoming.map(runLabel).join(" · ");
 
   return (
     <box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
@@ -85,6 +105,7 @@ export function LogView({
         <span fg={UI.dim}>{" next: "}</span>
         <span fg={UI.text}>{truncate(nextLabel, Math.max(8, width - 8))}</span>
       </text>
+      <RanLine ran={ran} runLabel={runLabel} width={width} />
       <text fg={UI.dim}>{truncate(` log${meta}`, width - 1)}</text>
       <box style={{ flexDirection: "column", flexGrow: 1, paddingLeft: 1 }}>
         {body.map((line, i) => (
@@ -95,6 +116,42 @@ export function LogView({
       </box>
       <text fg={UI.dim}>{` ↑↓ scroll · q close${position}`}</text>
     </box>
+  );
+}
+
+function RanLine({
+  ran,
+  runLabel,
+  width,
+}: {
+  ran: RanInfo | undefined;
+  runLabel: (d: Date) => string;
+  width: number;
+}) {
+  if (ran === undefined) {
+    return <text fg={UI.faint}>{" ran:  (no system log access)"}</text>;
+  }
+  if (ran === "loading") {
+    return <text fg={UI.dim}>{" ran:  reading the system log…"}</text>;
+  }
+  if (ran.note || ran.items.length === 0) {
+    return <text fg={UI.dim}>{truncate(` ran:  ${ran.note ?? "no past runs"}`, width - 1)}</text>;
+  }
+  // ✓/✗ marks are judged per scheduled run; "·" means before log coverage.
+  const spans = [];
+  for (let i = 0; i < ran.items.length; i++) {
+    const r = ran.items[i]!;
+    if (i > 0) spans.push(<span key={`s${i}`} fg={UI.dim}>{" · "}</span>);
+    spans.push(
+      <span key={`g${i}`} fg={STATUS_COLOR[r.status]}>{`${STATUS_GLYPH[r.status]} `}</span>,
+      <span key={`t${i}`} fg={UI.text}>{runLabel(r.at)}</span>,
+    );
+  }
+  return (
+    <text>
+      <span fg={UI.dim}>{" ran:  "}</span>
+      {spans}
+    </text>
   );
 }
 

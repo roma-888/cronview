@@ -4,6 +4,7 @@ import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { CliError, HELP, VERSION, parseArgs, type CliOptions } from "./cli";
 import { loadCrontabFile, loadUserCrontab, parseCrontab } from "./crontab";
+import { fetchHistory } from "./history";
 import { App } from "./ui/App";
 
 function fail(message: string): never {
@@ -73,5 +74,6 @@ createRoot(renderer).render(
     initialText={text}
     readSource={readSource}
     runEditor={runEditor}
+    loadHistory={() => fetchHistory(7)}
   />,
 );

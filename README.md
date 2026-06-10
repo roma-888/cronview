@@ -73,6 +73,7 @@ The calendar live-reloads: cronview polls the crontab every few seconds and refr
 Detail-pane rows are numbered; press a job's number to open everything about it:
 
 - **The schedule in plain English** — `*/10 9-17 * * 1-5` becomes "every 10 minutes, 09:00–17:59, Mon–Fri" — plus the next 5 concrete run times.
+- **Run history** — the last 5 scheduled runs judged against the system log (last 7 days): `✓` ran, `✗` no record, `?` ambiguous, `·` before log coverage. On Linux the journal attributes runs to exact commands; macOS only records that *a* cron job started each minute, so runs are confirmed per-minute and marked `?` when several jobs share a minute.
 - **The tail of its log.** cronview finds the log by reading the job's own redirect (`>> /var/log/thing.log`), expanding `~` and `$VAR`s from the crontab's env lines. Jobs that redirect to `/dev/null` or don't redirect at all get a note explaining where the output went (discarded, or mailed by cron).
 
 `↑`/`↓` scrolls the log, `q`/`Esc` closes.

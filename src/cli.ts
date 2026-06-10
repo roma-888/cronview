@@ -24,7 +24,7 @@ Keys:
   m / w    month / week view        t   jump to today
   a        12/24-hour clock         q / Esc  quit
   e        edit the crontab in your editor, reload on exit
-  1-9      job view: schedule in plain English, next runs, output log
+  1-9      job view: schedule in plain English, next/recent runs, output log
 
 The calendar also live-reloads within a few seconds when the crontab changes.
 `;

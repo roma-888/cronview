@@ -434,6 +434,38 @@ describe("App (log peek)", () => {
     setup.renderer.destroy();
   });
 
+  test("the job overlay shows run history with ran/missing marks", async () => {
+    // logger-job is @daily; its most recent runs are at 00:00 today/yesterday.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today.getTime() - 24 * 3600 * 1000);
+    const loggerCommand = logResult.jobs[0]!.command;
+    const loadHistory = async () => ({
+      records: [{ at: today, command: loggerCommand }], // ran today, no record yesterday
+      coverageStart: new Date(yesterday.getTime() - 24 * 3600 * 1000),
+    });
+    const text = "";
+    const setup = await testRender(
+      <App
+        result={logResult}
+        initialView="month"
+        initialDate={june10}
+        source="test"
+        initialText={text}
+        loadHistory={loadHistory}
+      />,
+      { width: 120, height: 38 },
+    );
+    await setup.renderOnce();
+    await act(async () => {}); // flush the async history load
+    await press(setup, "1");
+    const overlay = setup.captureCharFrame();
+    expect(overlay).toContain("ran:");
+    expect(overlay).toContain("✓");
+    expect(overlay).toContain("✗");
+    setup.renderer.destroy();
+  });
+
   test("digits with no matching job are inert", async () => {
     const setup = await renderLogApp();
     const before = setup.captureCharFrame();

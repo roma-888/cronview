@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { explainSchedule } from "../src/explain";
-import { nextRuns } from "../src/schedule";
+import { nextRuns, prevRuns } from "../src/schedule";
 import { parseCrontab } from "../src/crontab";
 
 describe("explainSchedule (24-hour)", () => {
@@ -33,6 +33,20 @@ describe("explainSchedule (12-hour)", () => {
     expect(explainSchedule("*/10 9-17 * * 1-5", "12")).toBe(
       "every 10 minutes, 9:00am–5:59pm, Mon–Fri",
     );
+  });
+});
+
+describe("prevRuns", () => {
+  const job = parseCrontab("30 2 * * * backup").jobs[0]!;
+
+  test("returns the previous n occurrences before a given time", () => {
+    const from = new Date(2026, 5, 10, 14, 0);
+    const runs = prevRuns(job, from, 3);
+    expect(runs.map((d) => `${d.getDate()} ${d.getHours()}:${d.getMinutes()}`)).toEqual([
+      "10 2:30",
+      "9 2:30",
+      "8 2:30",
+    ]);
   });
 });
 

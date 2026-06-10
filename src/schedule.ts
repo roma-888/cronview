@@ -116,6 +116,29 @@ export function nextRuns(job: CronJob, from: Date, n: number): Date[] {
   return out;
 }
 
+/** The previous n runs of one job before a given time, newest first. */
+export function prevRuns(job: CronJob, from: Date, n: number): Date[] {
+  const out: Date[] = [];
+  try {
+    const it = CronExpressionParser.parse(job.expression, { currentDate: from });
+    for (let i = 0; i < n; i++) out.push(it.prev().toDate());
+  } catch {
+    // iterator exhausted
+  }
+  return out;
+}
+
+/** Does the job run at exactly this minute? */
+export function runsAt(job: CronJob, at: Date): boolean {
+  const from = new Date(at.getTime() - 1000);
+  try {
+    const it = CronExpressionParser.parse(job.expression, { currentDate: from });
+    return it.next().toDate().getTime() === at.getTime();
+  } catch {
+    return false;
+  }
+}
+
 /** Next upcoming run across all jobs, from a given time. */
 export function nextRunAcross(jobs: CronJob[], from: Date): { job: CronJob; at: Date } | null {
   let best: { job: CronJob; at: Date } | null = null;

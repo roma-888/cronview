@@ -12,9 +12,10 @@ import {
   startOfDay,
   weeksInMonthGrid,
 } from "../dates";
-import { dayInfosForRange, nextRunAcross, nextRuns, runsInHour } from "../schedule";
+import { dayInfosForRange, nextRunAcross, nextRuns, prevRuns, runsAt, runsInHour } from "../schedule";
 import { explainSchedule } from "../explain";
 import { outputTarget, readLogTail, type LogTail, type OutputTarget } from "../logs";
+import { buildIndex, runStatus, type RunHistory } from "../history";
 import type { CronJob } from "../types";
 import { MonthView } from "./MonthView";
 import { WeekView } from "./WeekView";
@@ -36,6 +37,8 @@ interface AppProps {
   pollMs?: number;
   /** Runs the user's editor, blocking until it exits (the renderer is suspended). */
   runEditor?: () => void;
+  /** Fetches cron run evidence from the system log; absent hides run history. */
+  loadHistory?: () => Promise<RunHistory>;
 }
 
 /**
@@ -56,6 +59,7 @@ export function App({
   readSource,
   pollMs = 3000,
   runEditor,
+  loadHistory,
 }: AppProps) {
   const renderer = useRenderer();
   const { width, height } = useTerminalDimensions();
@@ -68,6 +72,36 @@ export function App({
     null,
   );
   const [logScroll, setLogScroll] = useState(0);
+  const [history, setHistory] = useState<RunHistory | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadHistory?.().then((h) => {
+      if (!cancelled) setHistory(h);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadHistory]);
+
+  // Judge the open job's recent scheduled runs against the system log.
+  const ran = useMemo(() => {
+    if (!log || !loadHistory) return undefined;
+    if (!history) return "loading" as const;
+    if (history.note) return { items: [], note: history.note };
+    const index = buildIndex(history.records);
+    const items = prevRuns(log.job, new Date(), 5).map((at) => ({
+      at,
+      status: runStatus(
+        index,
+        at,
+        log.job.command,
+        result.jobs.filter((j) => runsAt(j, at)).length,
+        history.coverageStart,
+      ),
+    }));
+    return { items };
+  }, [log, history, loadHistory, result.jobs]);
 
   const cursorInfos = useMemo(
     () => dayInfosForRange(result.jobs, cursor, 1).get(dateKey(cursor)) ?? [],
@@ -232,6 +266,7 @@ export function App({
         tail={log.tail}
         explanation={explainSchedule(log.job.expression, hourFormat)}
         upcoming={nextRuns(log.job, new Date(), 5)}
+        ran={ran}
         hourFormat={hourFormat}
         width={width}
         height={height}
