@@ -59,7 +59,7 @@ These are the only bindings — every other key (and any modifier combo) is deli
 - **Month** — calendar grid; each day shows its total run count and one colored dot per job that runs that day. The detail pane lists the selected day's jobs sorted by first run time.
 - **Week** — 7-day × 24-hour grid; each cell shows the number of runs in that hour, colored by job. On short terminals the hour axis scrolls (`⋮`) to follow the cursor. The detail pane shows the selected day + hour with the exact minute pattern (`:00 :15 :30 …`).
 
-The layout adapts to the terminal size: the detail pane shrinks first, then month cells drop their spacing row. The minimum usable size is **66×22** — below that, cronview shows a resize notice instead of a broken layout.
+The layout fills the terminal at any size: columns split the full width, month cells grow taller as the terminal does, and the detail pane absorbs the remaining rows so it always sits directly under the grid. The minimum usable size is **66×22** — below that, cronview shows a resize notice instead of a broken layout.
 
 ## What it understands
 
@@ -77,7 +77,7 @@ Run counts are computed with field math (`|minutes| × |hours|` on matching days
 
 ```sh
 bun install
-bun test              # 37 tests: parser, schedule math, dates, full-UI render tests
+bun test              # 52 tests: parser, schedule math, dates, full-UI render tests
 npx tsc --noEmit      # typecheck
 bun scripts/frame.tsx week 120x40   # print a rendered frame without a TTY
 ```
