@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
+import { parseCrontab } from "../crontab";
 import type { HourFormat, ParseResult, ViewMode } from "../types";
 import {
   MONTH_NAMES,
@@ -27,6 +28,13 @@ interface AppProps {
   initialDate: Date;
   source: string;
   initialHourFormat?: HourFormat;
+  /** The crontab text `result` was parsed from; reloads diff against it. */
+  initialText?: string;
+  /** Re-reads the crontab source; absent means live reload is off. */
+  readSource?: () => string;
+  pollMs?: number;
+  /** Runs the user's editor, blocking until it exits (the renderer is suspended). */
+  runEditor?: () => void;
 }
 
 /**
@@ -38,14 +46,19 @@ export const MIN_WIDTH = 66;
 export const MIN_HEIGHT = 22;
 
 export function App({
-  result,
+  result: initialResult,
   initialView,
   initialDate,
   source,
   initialHourFormat = "24",
+  initialText = "",
+  readSource,
+  pollMs = 3000,
+  runEditor,
 }: AppProps) {
   const renderer = useRenderer();
   const { width, height } = useTerminalDimensions();
+  const [result, setResult] = useState<ParseResult>(initialResult);
   const [view, setView] = useState<ViewMode>(initialView);
   const [cursor, setCursor] = useState<Date>(startOfDay(initialDate));
   const [cursorHour, setCursorHour] = useState<number>(new Date().getHours());
@@ -69,7 +82,29 @@ export function App({
 
   const maxLogScroll = log?.tail ? Math.max(0, log.tail.lines.length - logContentRows(height)) : 0;
 
-  // The keymap is exactly what the status bar advertises: ←→ ↑↓ [ ] m w t a 1-9 q
+  // Live reload: re-parse only when the source text actually changed, and keep
+  // the last good parse if a read fails (e.g. mid-save).
+  const sourceText = useRef(initialText);
+  const refresh = useCallback(() => {
+    if (!readSource) return;
+    let text: string;
+    try {
+      text = readSource();
+    } catch {
+      return;
+    }
+    if (text === sourceText.current) return;
+    sourceText.current = text;
+    setResult(parseCrontab(text));
+  }, [readSource]);
+
+  useEffect(() => {
+    if (!readSource) return;
+    const id = setInterval(refresh, pollMs);
+    return () => clearInterval(id);
+  }, [refresh, pollMs, readSource]);
+
+  // The keymap is exactly what the status bar advertises: ←→ ↑↓ [ ] m w t a e 1-9 q
   // (+Esc). Anything else — including modifier combos — is deliberately inert.
   useKeyboard((key) => {
     if (key.ctrl || key.meta || key.option) return;
@@ -113,6 +148,17 @@ export function App({
         break;
       case "a":
         setHourFormat((f) => (f === "24" ? "12" : "24"));
+        break;
+      case "e":
+        if (runEditor) {
+          renderer.suspend?.();
+          try {
+            runEditor();
+          } finally {
+            renderer.resume?.();
+          }
+          refresh();
+        }
         break;
       case "t": {
         const now = new Date();

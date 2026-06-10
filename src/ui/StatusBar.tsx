@@ -9,7 +9,7 @@ interface StatusBarProps {
 export function StatusBar({ view, result }: StatusBarProps) {
   const vertical = view === "month" ? "week" : "hour";
   const bracket = view === "month" ? "month" : "week";
-  const keys = ` ←→ day · ↑↓ ${vertical} · [ ] ${bracket} · m/w view · t today · a 12/24 · 1-9 logs · q quit`;
+  const keys = ` ←→ day · ↑↓ ${vertical} · [ ] ${bracket} · m/w view · t today · a 12/24 · e edit · 1-9 logs · q quit`;
 
   const notes: string[] = [];
   if (result.warnings.length > 0) {

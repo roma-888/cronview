@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { act } from "react";
@@ -430,6 +430,79 @@ describe("App (log peek)", () => {
     const before = setup.captureCharFrame();
     await press(setup, "9");
     expect(setup.captureCharFrame()).toBe(before);
+    setup.renderer.destroy();
+  });
+});
+
+describe("App (live reload & edit)", () => {
+  function makeCrontabFile(content: string) {
+    const dir = mkdtempSync(join(tmpdir(), "cronview-reload-"));
+    const path = join(dir, "crontab");
+    writeFileSync(path, content);
+    return path;
+  }
+
+  async function renderWatchedApp(path: string, runEditor?: () => void) {
+    const text = readFileSync(path, "utf8");
+    const setup = await testRender(
+      <App
+        result={parseCrontab(text)}
+        initialView="month"
+        initialDate={june10}
+        source="test"
+        initialText={text}
+        readSource={() => readFileSync(path, "utf8")}
+        pollMs={20}
+        runEditor={runEditor}
+      />,
+      { width: 100, height: 38 },
+    );
+    await setup.renderOnce();
+    return setup;
+  }
+
+  async function settle(setup: { renderOnce: () => Promise<unknown> }) {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 120));
+    });
+    await setup.renderOnce();
+  }
+
+  test("picks up crontab changes within a poll tick", async () => {
+    const path = makeCrontabFile("@daily alpha-task\n");
+    const setup = await renderWatchedApp(path);
+    expect(setup.captureCharFrame()).toContain("alpha-task");
+
+    writeFileSync(path, "@daily beta-task\n");
+    await settle(setup);
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("beta-task");
+    expect(frame).not.toContain("alpha-task");
+    setup.renderer.destroy();
+  });
+
+  test("keeps the last good parse when the source becomes unreadable", async () => {
+    const path = makeCrontabFile("@daily alpha-task\n");
+    const setup = await renderWatchedApp(path);
+    rmSync(path);
+    await settle(setup);
+    expect(setup.captureCharFrame()).toContain("alpha-task");
+    setup.renderer.destroy();
+  });
+
+  test("e runs the editor and reloads immediately", async () => {
+    const path = makeCrontabFile("@daily alpha-task\n");
+    let edited = 0;
+    const setup = await renderWatchedApp(path, () => {
+      edited++;
+      writeFileSync(path, "@daily gamma-task\n");
+    });
+    await act(async () => {
+      setup.mockInput.pressKey("e");
+    });
+    await setup.renderOnce();
+    expect(edited).toBe(1);
+    expect(setup.captureCharFrame()).toContain("gamma-task");
     setup.renderer.destroy();
   });
 });

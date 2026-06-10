@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { spawnSync } from "node:child_process";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { loadCrontabFile, loadUserCrontab, parseCrontab } from "./crontab";
@@ -27,7 +28,10 @@ Keys:
   [ / ]    previous / next month (month view) · week (week view)
   m / w    month / week view        t   jump to today
   a        12/24-hour clock         q / Esc  quit
+  e        edit the crontab in your editor, reload on exit
   1-9      peek at a job's output log (numbers in the detail pane)
+
+The calendar also live-reloads within a few seconds when the crontab changes.
 `;
 
 interface CliOptions {
@@ -93,16 +97,27 @@ const opts = parseArgs(process.argv.slice(2));
 
 let text: string;
 let source: string;
+let readSource: () => string;
+let runEditor: () => void;
 if (opts.file) {
+  const file = opts.file;
   try {
-    text = loadCrontabFile(opts.file);
+    text = loadCrontabFile(file);
   } catch (err) {
-    fail(`cannot read ${opts.file}: ${err instanceof Error ? err.message : err}`);
+    fail(`cannot read ${file}: ${err instanceof Error ? err.message : err}`);
   }
-  source = opts.file;
+  source = file;
+  readSource = () => loadCrontabFile(file);
+  runEditor = () => {
+    spawnSync(process.env.VISUAL || process.env.EDITOR || "vi", [file], { stdio: "inherit" });
+  };
 } else {
   text = loadUserCrontab();
   source = "crontab -l";
+  readSource = () => loadUserCrontab();
+  runEditor = () => {
+    spawnSync("crontab", ["-e"], { stdio: "inherit" });
+  };
 }
 
 const result = parseCrontab(text);
@@ -117,5 +132,8 @@ createRoot(renderer).render(
     initialDate={opts.date}
     source={source}
     initialHourFormat={opts.hours}
+    initialText={text}
+    readSource={readSource}
+    runEditor={runEditor}
   />,
 );

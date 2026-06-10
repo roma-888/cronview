@@ -52,6 +52,7 @@ npm run demo                 # from a checkout: tour with examples/sample.cronta
 | `m` / `w` | month view / week view |
 | `t` | jump to today |
 | `a` | toggle 12/24-hour clock |
+| `e` | edit the crontab in `$EDITOR` (`crontab -e` for your user crontab), reload on exit |
 | `1`–`9` | peek at a job's output log (numbers in the detail pane) |
 | `q` / `Esc` | quit (closes the log peek first) |
 
@@ -63,6 +64,8 @@ These are the only bindings — every other key (and any modifier combo) is deli
 - **Week** — 7-day × 24-hour grid; each cell shows the number of runs in that hour, colored by job. On short terminals the hour axis scrolls (`⋮`) to follow the cursor. The detail pane shows the selected day + hour with the exact minute pattern (`:00 :15 :30 …`).
 
 The layout fills the terminal at any size: columns split the full width, month cells grow taller as the terminal does, and the detail pane absorbs the remaining rows so it always sits directly under the grid. The minimum usable size is **66×22** — below that, cronview shows a resize notice instead of a broken layout.
+
+The calendar live-reloads: cronview polls the crontab every few seconds and refreshes when it changes — whether you press `e` to edit it in place or change it from another terminal.
 
 ### Log peek
 
