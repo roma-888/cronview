@@ -6,7 +6,7 @@ import { parseDateArg } from "./dates";
 import type { HourFormat, ViewMode } from "./types";
 import { App } from "./ui/App";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 const HELP = `cronview ${VERSION} — terminal calendar viewer for your cron jobs
 
