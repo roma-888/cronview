@@ -21,11 +21,15 @@ asset="cronview-${os}-${arch}"
 dir="${CRONVIEW_INSTALL_DIR:-$HOME/.local/bin}"
 mkdir -p "$dir"
 
-echo "downloading ${asset}…"
-curl -fsSL "https://github.com/${REPO}/releases/latest/download/${asset}" -o "${dir}/cronview"
+# curl's own progress bar when a human is watching; silent in CI/logs.
+progress="-s"
+if [ -t 2 ]; then progress="-#"; fi
+
+echo "downloading ${asset} (latest release)…"
+curl -fSL "$progress" "https://github.com/${REPO}/releases/latest/download/${asset}" -o "${dir}/cronview"
 chmod +x "${dir}/cronview"
 
-echo "installed ${dir}/cronview"
+echo "✓ installed ${dir}/cronview"
 case ":$PATH:" in
   *":${dir}:"*) ;;
   *) echo "note: ${dir} is not on your PATH — add it, e.g.: export PATH=\"${dir}:\$PATH\"" ;;
