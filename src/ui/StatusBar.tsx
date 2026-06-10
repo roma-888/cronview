@@ -19,7 +19,7 @@ export function StatusBar({ view, result, filter, filterDraft, matches }: Status
       ? ` / ${filterDraft}▌ · Enter apply · Esc cancel`
       : filter
         ? ` /${filter} · ${matches} of ${result.jobs.length} jobs · Esc clear`
-        : ` ←→ day · ↑↓ ${vertical} · [ ] ${bracket} · m/w view · t today · a 12/24 · e edit · 1-9 job · q quit`;
+        : ` ←→ ↑↓ move · [ ] ${bracket} · m/w view · 1-9 job · ? help · q quit`;
 
   const notes: string[] = [];
   if (result.warnings.length > 0) {

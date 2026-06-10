@@ -22,6 +22,7 @@ import { WeekView } from "./WeekView";
 import { DetailPane } from "./DetailPane";
 import { StatusBar } from "./StatusBar";
 import { LogView, logContentRows } from "./LogView";
+import { HelpView } from "./HelpView";
 import { UI, clamp, truncate } from "./theme";
 
 interface AppProps {
@@ -76,6 +77,7 @@ export function App({
   // Committed filter ("" = off) and the in-progress query buffer (null = not typing).
   const [filter, setFilter] = useState("");
   const [filterDraft, setFilterDraft] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const visibleJobs = useMemo(() => {
     if (!filter) return result.jobs;
@@ -148,8 +150,9 @@ export function App({
     return () => clearInterval(id);
   }, [refresh, pollMs, readSource]);
 
-  // The keymap is exactly what the status bar advertises: ←→ ↑↓ [ ] m w t a e 1-9 q
-  // (+Esc). Anything else — including modifier combos — is deliberately inert.
+  // The keymap is exactly what the ? help card (KEYMAP in cli.ts) advertises:
+  // ←→ ↑↓ [ ] m w t a e / 1-9 ? q (+Esc). Anything else — including modifier
+  // combos — is deliberately inert.
   useKeyboard((key) => {
     if (key.ctrl || key.meta || key.option) return;
     // The log overlay captures all keys while open.
@@ -166,6 +169,11 @@ export function App({
           setLogScroll((s) => Math.max(s - 1, 0));
           break;
       }
+      return;
+    }
+    // The help card captures all keys while open.
+    if (helpOpen) {
+      if (key.name === "?" || key.name === "q" || key.name === "escape") setHelpOpen(false);
       return;
     }
     // Filter typing captures every key until committed or cancelled.
@@ -192,6 +200,10 @@ export function App({
     }
     if (key.name === "/") {
       setFilterDraft(filter);
+      return;
+    }
+    if (key.name === "?") {
+      setHelpOpen(true);
       return;
     }
     if (key.name === "escape" && filter) {
@@ -295,6 +307,10 @@ export function App({
         <text fg={UI.dim}>resize the window, or press q to quit</text>
       </box>
     );
+  }
+
+  if (helpOpen) {
+    return <HelpView />;
   }
 
   if (log) {

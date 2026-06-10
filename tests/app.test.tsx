@@ -601,6 +601,44 @@ describe("App (filter)", () => {
   });
 });
 
+describe("App (help overlay)", () => {
+  test("? opens the keymap card and q closes it", async () => {
+    const setup = await renderApp();
+    expect(setup.captureCharFrame()).toContain("? help"); // advertised in the status bar
+    await act(async () => {
+      setup.mockInput.pressKey("?");
+    });
+    await setup.renderOnce();
+    const overlay = setup.captureCharFrame();
+    expect(overlay).toContain("12/24-hour clock");
+    expect(overlay).toContain("filter jobs");
+    expect(overlay).not.toContain("June 2026"); // calendar replaced
+
+    await act(async () => {
+      setup.mockInput.pressKey("q");
+    });
+    await setup.renderOnce();
+    expect(setup.captureCharFrame()).toContain("June 2026");
+    setup.renderer.destroy();
+  });
+
+  test("other keys are inert while help is open", async () => {
+    const setup = await renderApp();
+    await act(async () => {
+      setup.mockInput.pressKey("?");
+    });
+    await setup.renderOnce();
+    const before = setup.captureCharFrame();
+    await act(async () => {
+      setup.mockInput.pressKey("w");
+      setup.mockInput.pressKey("1");
+    });
+    await setup.renderOnce();
+    expect(setup.captureCharFrame()).toBe(before);
+    setup.renderer.destroy();
+  });
+});
+
 describe("App (empty crontab)", () => {
   test("shows a friendly empty state", async () => {
     const empty = parseCrontab("");

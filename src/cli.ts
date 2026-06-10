@@ -3,6 +3,23 @@ import type { HourFormat, ViewMode } from "./types";
 
 export const VERSION = "0.5.0";
 
+/** One source of truth for the keymap: --help and the ? overlay both render it. */
+export const KEYMAP: ReadonlyArray<readonly [string, string]> = [
+  ["←/→", "previous / next day"],
+  ["↑/↓", "previous / next week (month view) · hour (week view)"],
+  ["[ / ]", "previous / next month (month view) · week (week view)"],
+  ["m / w", "month / week view"],
+  ["t", "jump to today"],
+  ["a", "toggle the 12/24-hour clock"],
+  ["e", "edit the crontab in your editor, reload on exit"],
+  ["/", "filter jobs by command (Enter apply · Esc clear)"],
+  ["1-9", "job view: schedule in plain English, next/recent runs, output log"],
+  ["?", "help"],
+  ["q / Esc", "quit"],
+];
+
+const keysSection = KEYMAP.map(([k, d]) => `  ${k.padEnd(8)} ${d}`).join("\n");
+
 export const HELP = `cronview ${VERSION} — terminal calendar viewer for your cron jobs
 
 Usage:
@@ -18,13 +35,7 @@ Options:
       --version         Show version
 
 Keys:
-  ←/→      previous / next day
-  ↑/↓      previous / next week (month view) · hour (week view)
-  [ / ]    previous / next month (month view) · week (week view)
-  m / w    month / week view        t   jump to today
-  a        12/24-hour clock         q / Esc  quit
-  e        edit the crontab in your editor, reload on exit
-  1-9      job view: schedule in plain English, next/recent runs, output log
+${keysSection}
 
 The calendar also live-reloads within a few seconds when the crontab changes.
 `;
