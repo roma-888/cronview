@@ -16,17 +16,29 @@ A terminal calendar for your cron jobs. See **when** everything runs — in a mo
  ● 09:00             0 9 * * 1-5       $HOME/scripts/standup-reminder.sh
 ```
 
-Built with [OpenTUI](https://github.com/anomalyco/opentui) and [cron-parser](https://github.com/harrisiirak/cron-parser). Runs on [Bun](https://bun.sh) (OpenTUI is currently Bun-exclusive).
+Built with [OpenTUI](https://github.com/anomalyco/opentui) and [cron-parser](https://github.com/harrisiirak/cron-parser).
+
+## Install
+
+Single self-contained binary — no runtime needed:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/roma-888/cronview/main/scripts/install.sh | bash
+```
+
+Or grab `cronview-<os>-<arch>` from the [latest release](https://github.com/roma-888/cronview/releases/latest) yourself, `chmod +x` it, and put it on your PATH. Binaries are built for macOS (arm64, x64) and Linux (x64, arm64).
+
+To run from source instead you need [Bun](https://bun.sh) (OpenTUI is currently Bun-exclusive): `bun install && bun src/index.tsx`. Build your own binary with `npm run build`.
 
 ## Usage
 
 ```sh
-bun src/index.tsx                     # your crontab (`crontab -l`), month view, today
-bun src/index.tsx --file path         # any crontab file
-bun src/index.tsx --view week         # start in the week view
-bun src/index.tsx --date 2026-07-01   # start on a specific date
+cronview                     # your crontab (`crontab -l`), month view, today
+cronview --file path         # any crontab file
+cronview --view week         # start in the week view
+cronview --date 2026-07-01   # start on a specific date
 
-npm run demo                          # tour with examples/sample.crontab
+npm run demo                 # from a checkout: tour with examples/sample.crontab
 ```
 
 ## Keys

@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.asset }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            target: bun-darwin-arm64
+            asset: cronview-darwin-arm64
+          - runner: macos-15-intel
+            target: bun-darwin-x64
+            asset: cronview-darwin-x64
+          - runner: ubuntu-24.04
+            target: bun-linux-x64
+            asset: cronview-linux-x64
+          - runner: ubuntu-24.04-arm
+            target: bun-linux-arm64
+            asset: cronview-linux-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - run: bun scripts/build.ts ${{ matrix.target }} ./dist/${{ matrix.asset }}
+      - name: Smoke test
+        run: ./dist/${{ matrix.asset }} --version
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset }}

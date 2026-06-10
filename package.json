@@ -7,6 +7,7 @@
     "cronview": "src/index.tsx"
   },
   "scripts": {
+    "build": "bun scripts/build.ts",
     "dev": "bun src/index.tsx",
     "demo": "bun src/index.tsx --file examples/sample.crontab",
     "test": "bun test",
