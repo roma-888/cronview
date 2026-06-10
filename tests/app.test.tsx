@@ -66,6 +66,32 @@ describe("App (month view)", () => {
     setup.renderer.destroy();
   });
 
+  test("unassigned keys do nothing", async () => {
+    const setup = await renderApp();
+    const before = setup.captureCharFrame();
+    // Former vim/page aliases and a sample of random keys must all be inert.
+    for (const key of ["h", "j", "k", "l", "v", "x", "n", "1", " ", "RETURN", "TAB"]) {
+      await act(async () => {
+        setup.mockInput.pressKey(key);
+      });
+    }
+    await setup.renderOnce();
+    expect(setup.captureCharFrame()).toBe(before);
+    setup.renderer.destroy();
+  });
+
+  test("modifier combos of assigned keys are inert", async () => {
+    const setup = await renderApp();
+    const before = setup.captureCharFrame();
+    await act(async () => {
+      setup.mockInput.pressKey("w", { ctrl: true });
+      setup.mockInput.pressKey("ARROW_LEFT", { meta: true });
+    });
+    await setup.renderOnce();
+    expect(setup.captureCharFrame()).toBe(before);
+    setup.renderer.destroy();
+  });
+
   test("status bar shows @reboot jobs", async () => {
     const { captureCharFrame, renderer } = await renderApp();
     expect(captureCharFrame()).toContain("@reboot ×1");

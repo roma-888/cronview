@@ -21,11 +21,11 @@ Options:
       --version         Show version
 
 Keys:
-  ←/→ or h/l   previous / next day
-  ↑/↓ or k/j   previous / next week (month view) · hour (week view)
-  [ / ]        previous / next month (month view) · week (week view)
-  m / w        month / week view        t   jump to today
-  q / Esc      quit
+  ←/→      previous / next day
+  ↑/↓      previous / next week (month view) · hour (week view)
+  [ / ]    previous / next month (month view) · week (week view)
+  m / w    month / week view        t   jump to today
+  q / Esc  quit
 `;
 
 interface CliOptions {

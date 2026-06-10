@@ -39,21 +39,21 @@ export function App({ result, initialView, initialDate, source }: AppProps) {
   const [cursor, setCursor] = useState<Date>(startOfDay(initialDate));
   const [cursorHour, setCursorHour] = useState<number>(new Date().getHours());
 
+  // The keymap is exactly what the status bar advertises: ←→ ↑↓ [ ] m w t q (+Esc).
+  // Anything else — including modifier combos — is deliberately inert.
   useKeyboard((key) => {
-    const name = key.name ?? key.sequence;
-    switch (name) {
+    if (key.ctrl || key.meta || key.option) return;
+    switch (key.name) {
       case "q":
       case "escape":
         renderer.destroy();
         process.exit(0);
+        break;
       case "m":
         setView("month");
         break;
       case "w":
         setView("week");
-        break;
-      case "v":
-        setView((v) => (v === "month" ? "week" : "month"));
         break;
       case "t": {
         const now = new Date();
@@ -62,29 +62,23 @@ export function App({ result, initialView, initialDate, source }: AppProps) {
         break;
       }
       case "left":
-      case "h":
         setCursor((c) => addDays(c, -1));
         break;
       case "right":
-      case "l":
         setCursor((c) => addDays(c, 1));
         break;
       case "up":
-      case "k":
         if (view === "month") setCursor((c) => addDays(c, -7));
         else setCursorHour((h) => clamp(h - 1, 0, 23));
         break;
       case "down":
-      case "j":
         if (view === "month") setCursor((c) => addDays(c, 7));
         else setCursorHour((h) => clamp(h + 1, 0, 23));
         break;
       case "[":
-      case "pageup":
         setCursor((c) => (view === "month" ? addMonths(c, -1) : addDays(c, -7)));
         break;
       case "]":
-      case "pagedown":
         setCursor((c) => (view === "month" ? addMonths(c, 1) : addDays(c, 7)));
         break;
     }

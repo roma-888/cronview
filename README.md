@@ -33,12 +33,14 @@ npm run demo                          # tour with examples/sample.crontab
 
 | Key | Action |
 | --- | --- |
-| `←` `→` (or `h` `l`) | previous / next day |
-| `↑` `↓` (or `k` `j`) | ±1 week (month view) · ±1 hour (week view) |
-| `[` `]` (or PgUp/PgDn) | previous / next month (month view) · week (week view) |
-| `m` / `w` / `v` | month view / week view / toggle |
+| `←` `→` | previous / next day |
+| `↑` `↓` | ±1 week (month view) · ±1 hour (week view) |
+| `[` `]` | previous / next month (month view) · week (week view) |
+| `m` / `w` | month view / week view |
 | `t` | jump to today |
 | `q` / `Esc` | quit |
+
+These are the only bindings — every other key (and any modifier combo) is deliberately inert.
 
 ## Views
 
