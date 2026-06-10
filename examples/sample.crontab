@@ -1,0 +1,26 @@
+# Sample crontab for the cronview demo
+SHELL=/bin/zsh
+PATH=/usr/local/bin:/usr/bin:/bin
+MAILTO=ops@example.com
+
+# Monitoring
+*/15 * * * * /usr/local/bin/health-check --ping
+0 */6 * * * certbot renew --quiet
+
+# Workday helpers
+0 9 * * 1-5 $HOME/scripts/standup-reminder.sh
+
+# Backups
+30 2 * * * /usr/local/bin/backup --incremental >> /var/log/backup.log 2>&1
+0 3 * * 0 /usr/local/bin/backup --full
+
+# Housekeeping
+@daily /usr/local/bin/rotate-logs
+@weekly brew update && brew upgrade
+
+# Business
+0 0 1 * * /usr/local/bin/billing-report --month
+45 17 15,30 * * /usr/local/bin/payroll-sync
+
+# Started at boot, not on a schedule
+@reboot /usr/local/bin/start-agent
