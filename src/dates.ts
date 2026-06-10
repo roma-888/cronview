@@ -37,6 +37,11 @@ export function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
+/** Week rows in the Sunday-based calendar grid for a month (4–6). */
+export function weeksInMonthGrid(year: number, month: number): number {
+  return Math.ceil((new Date(year, month, 1).getDay() + daysInMonth(year, month)) / 7);
+}
+
 /** Add months, clamping the day so Jan 31 + 1 month = Feb 28/29, not Mar 2/3. */
 export function addMonths(d: Date, n: number): Date {
   const r = new Date(d);

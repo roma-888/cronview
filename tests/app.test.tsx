@@ -179,6 +179,65 @@ describe("App (resize)", () => {
   });
 });
 
+describe("App (fills the terminal)", () => {
+  test("month grid columns stretch across a wide terminal", async () => {
+    const setup = await renderApp();
+    await act(async () => {
+      setup.resize(150, 45);
+    });
+    await setup.renderOnce();
+    const header = setup
+      .captureCharFrame()
+      .split("\n")
+      .find((l) => l.includes("Sat"))!;
+    expect(header.indexOf("Sat")).toBeGreaterThan(112); // last column starts past 75% of width
+    setup.renderer.destroy();
+  });
+
+  test("week grid columns stretch across a wide terminal", async () => {
+    const setup = await renderApp("week");
+    await act(async () => {
+      setup.resize(150, 45);
+    });
+    await setup.renderOnce();
+    const header = setup
+      .captureCharFrame()
+      .split("\n")
+      .find((l) => l.includes("Sat 13"))!;
+    expect(header.indexOf("Sat 13")).toBeGreaterThan(112);
+    setup.renderer.destroy();
+  });
+
+  test("month view: detail pane sits directly under the grid on tall terminals", async () => {
+    const setup = await renderApp();
+    await act(async () => {
+      setup.resize(100, 45);
+    });
+    await setup.renderOnce();
+    const lines = setup.captureCharFrame().split("\n");
+    const title = lines.findIndex((l) => l.includes("Wednesday, June 10, 2026"));
+    const lastDots = lines.reduce((acc, l, i) => (i < title && l.includes("●") ? i : acc), -1);
+    expect(title).toBeGreaterThan(0);
+    // At most the tail of the last (taller) cell plus the pane border between them.
+    expect(title - lastDots).toBeLessThanOrEqual(6);
+    setup.renderer.destroy();
+  });
+
+  test("week view: detail pane sits directly under the hour grid on tall terminals", async () => {
+    const setup = await renderApp("week");
+    await act(async () => {
+      setup.resize(120, 45);
+    });
+    await setup.renderOnce();
+    const lines = setup.captureCharFrame().split("\n");
+    const title = lines.findIndex((l) => l.includes("Wednesday, June 10, 2026"));
+    const hour23 = lines.findIndex((l) => /^\s{1,3}23 /.test(l));
+    expect(hour23).toBeGreaterThan(0);
+    expect(title - hour23).toBeLessThanOrEqual(3); // only the pane border between them
+    setup.renderer.destroy();
+  });
+});
+
 describe("App (minimum size)", () => {
   test("lists both dimensions when both are below minimum", async () => {
     const setup = await renderApp();

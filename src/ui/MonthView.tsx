@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import type { CronJob } from "../types";
 import { dayInfosForRange, totalRuns, type JobDayInfo } from "../schedule";
-import { DAY_NAMES, addDays, dateKey, daysInMonth, isSameDay, startOfWeek } from "../dates";
-import { UI, clamp, formatCount, pad } from "./theme";
+import { DAY_NAMES, addDays, dateKey, isSameDay, startOfWeek, weeksInMonthGrid } from "../dates";
+import { UI, formatCount, pad } from "./theme";
 
 interface MonthViewProps {
   jobs: CronJob[];
   cursor: Date;
   width: number;
-  /** Rows per day cell: 3 (with a spacing row) or 2 (compact, for short terminals). */
+  /** Rows per day cell: 2 (compact) up to 5 (tall terminals). */
   cellH: number;
 }
 
@@ -17,14 +17,15 @@ export function MonthView({ jobs, cursor, width, cellH }: MonthViewProps) {
   const month = cursor.getMonth();
   const firstOfMonth = new Date(year, month, 1);
   const gridStart = startOfWeek(firstOfMonth);
-  const weeks = Math.ceil((firstOfMonth.getDay() + daysInMonth(year, month)) / 7);
+  const weeks = weeksInMonthGrid(year, month);
 
   const infosByDay = useMemo(
     () => dayInfosForRange(jobs, gridStart, weeks * 7),
     [jobs, year, month, weeks],
   );
 
-  const cellW = clamp(Math.floor((width - 2) / 7), 9, 16);
+  // Columns split the full terminal width; only a floor so narrow terminals stay legible.
+  const cellW = Math.max(9, Math.floor((width - 2) / 7));
   const today = new Date();
 
   const rows = [];

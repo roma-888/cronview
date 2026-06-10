@@ -23,7 +23,8 @@ export function WeekView({ jobs, cursor, cursorHour, width, maxHourRows }: WeekV
   );
 
   const labelW = 4;
-  const cellW = clamp(Math.floor((width - labelW - 2) / 7), 6, 16);
+  // Columns split the full terminal width; only a floor so narrow terminals stay legible.
+  const cellW = Math.max(6, Math.floor((width - labelW - 2) / 7));
   const today = new Date();
 
   const hours = visibleHours(maxHourRows, cursorHour);

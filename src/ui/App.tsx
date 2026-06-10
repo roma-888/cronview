@@ -9,6 +9,7 @@ import {
   formatHM,
   isSameDay,
   startOfDay,
+  weeksInMonthGrid,
 } from "../dates";
 import { dayInfosForRange, nextRunAcross } from "../schedule";
 import { MonthView } from "./MonthView";
@@ -123,15 +124,26 @@ export function App({ result, initialView, initialDate, source }: AppProps) {
     );
   }
 
-  // The detail pane shrinks before the calendar does.
-  const detailHeight = height >= 34 ? 9 : height >= 28 ? 7 : 5;
+  // The grid claims the terminal height first (keeping at least a 5-row detail
+  // pane), and the detail pane absorbs every leftover row so no dead space
+  // opens up between the grid and its separator.
+  // Rows available to the grid: total minus header (1), top padding (1),
+  // status bar (1), and the minimum detail pane.
+  const gridAvail = height - 3 - 5;
 
-  // Rows left for the week view's hour grid: total minus header (1), top padding (1),
-  // day-name row (1), two possible ⋮ scroll markers, detail pane, status bar (1).
-  const maxHourRows = clamp(height - detailHeight - 6, 4, 24);
+  // Month cells grow from 2 rows (compact) to 5 (tall terminals).
+  const weeks = weeksInMonthGrid(cursor.getFullYear(), cursor.getMonth());
+  const monthCellH = clamp(Math.floor((gridAvail - 1) / weeks), 2, 5);
 
-  // Month cells drop their spacing row when a 6-week grid wouldn't fit.
-  const monthCellH = height - detailHeight - 4 >= 18 ? 3 : 2;
+  // The week grid spends its budget on the day-name row and two possible ⋮
+  // scroll markers before hour rows.
+  const maxHourRows = clamp(gridAvail - 3, 4, 24);
+
+  const gridRows =
+    view === "month"
+      ? 1 + weeks * monthCellH
+      : 1 + maxHourRows + (maxHourRows < 24 ? 2 : 0);
+  const detailHeight = height - 3 - gridRows;
 
   return (
     <box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
