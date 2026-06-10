@@ -73,6 +73,15 @@ export function App({
   );
   const [logScroll, setLogScroll] = useState(0);
   const [history, setHistory] = useState<RunHistory | null>(null);
+  // Committed filter ("" = off) and the in-progress query buffer (null = not typing).
+  const [filter, setFilter] = useState("");
+  const [filterDraft, setFilterDraft] = useState<string | null>(null);
+
+  const visibleJobs = useMemo(() => {
+    if (!filter) return result.jobs;
+    const q = filter.toLowerCase();
+    return result.jobs.filter((j) => j.command.toLowerCase().includes(q));
+  }, [result.jobs, filter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,8 +113,8 @@ export function App({
   }, [log, history, loadHistory, result.jobs]);
 
   const cursorInfos = useMemo(
-    () => dayInfosForRange(result.jobs, cursor, 1).get(dateKey(cursor)) ?? [],
-    [result.jobs, dateKey(cursor)],
+    () => dayInfosForRange(visibleJobs, cursor, 1).get(dateKey(cursor)) ?? [],
+    [visibleJobs, dateKey(cursor)],
   );
 
   // The detail pane and the 1-9 log keys must agree on job numbering, so the
@@ -157,6 +166,36 @@ export function App({
           setLogScroll((s) => Math.max(s - 1, 0));
           break;
       }
+      return;
+    }
+    // Filter typing captures every key until committed or cancelled.
+    if (filterDraft !== null) {
+      switch (key.name) {
+        case "return":
+        case "enter":
+          setFilter(filterDraft);
+          setFilterDraft(null);
+          break;
+        case "escape":
+          setFilterDraft(null);
+          break;
+        case "backspace":
+          setFilterDraft((d) => (d ?? "").slice(0, -1));
+          break;
+        case "space":
+          setFilterDraft((d) => `${d ?? ""} `);
+          break;
+        default:
+          if (key.name.length === 1) setFilterDraft((d) => `${d ?? ""}${key.name}`);
+      }
+      return;
+    }
+    if (key.name === "/") {
+      setFilterDraft(filter);
+      return;
+    }
+    if (key.name === "escape" && filter) {
+      setFilter("");
       return;
     }
     if (/^[1-9]$/.test(key.name)) {
@@ -224,7 +263,7 @@ export function App({
     }
   });
 
-  const next = useMemo(() => nextRunAcross(result.jobs, new Date()), [result.jobs]);
+  const next = useMemo(() => nextRunAcross(visibleJobs, new Date()), [visibleJobs]);
 
   const monthLabel = `${MONTH_NAMES[cursor.getMonth()]} ${cursor.getFullYear()}`;
   const nextLabel = next
@@ -315,10 +354,10 @@ export function App({
       </box>
       <box style={{ flexDirection: "column", flexGrow: 1, paddingTop: 1, paddingLeft: 1 }}>
         {view === "month" ? (
-          <MonthView jobs={result.jobs} cursor={cursor} width={width - 2} cellH={monthCellH} />
+          <MonthView jobs={visibleJobs} cursor={cursor} width={width - 2} cellH={monthCellH} />
         ) : (
           <WeekView
-            jobs={result.jobs}
+            jobs={visibleJobs}
             cursor={cursor}
             cursorHour={cursorHour}
             width={width - 2}
@@ -337,7 +376,13 @@ export function App({
         hourFormat={hourFormat}
         crontabEmpty={result.jobs.length === 0 && result.reboots.length === 0}
       />
-      <StatusBar view={view} result={result} />
+      <StatusBar
+        view={view}
+        result={result}
+        filter={filter}
+        filterDraft={filterDraft}
+        matches={visibleJobs.length}
+      />
     </box>
   );
 }

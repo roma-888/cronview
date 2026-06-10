@@ -4,12 +4,22 @@ import { UI } from "./theme";
 interface StatusBarProps {
   view: ViewMode;
   result: ParseResult;
+  /** Committed filter query ("" = off). */
+  filter: string;
+  /** In-progress query buffer (null = not typing). */
+  filterDraft: string | null;
+  matches: number;
 }
 
-export function StatusBar({ view, result }: StatusBarProps) {
+export function StatusBar({ view, result, filter, filterDraft, matches }: StatusBarProps) {
   const vertical = view === "month" ? "week" : "hour";
   const bracket = view === "month" ? "month" : "week";
-  const keys = ` ←→ day · ↑↓ ${vertical} · [ ] ${bracket} · m/w view · t today · a 12/24 · e edit · 1-9 job · q quit`;
+  const keys =
+    filterDraft !== null
+      ? ` / ${filterDraft}▌ · Enter apply · Esc cancel`
+      : filter
+        ? ` /${filter} · ${matches} of ${result.jobs.length} jobs · Esc clear`
+        : ` ←→ day · ↑↓ ${vertical} · [ ] ${bracket} · m/w view · t today · a 12/24 · e edit · 1-9 job · q quit`;
 
   const notes: string[] = [];
   if (result.warnings.length > 0) {

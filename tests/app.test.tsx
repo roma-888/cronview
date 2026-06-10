@@ -548,6 +548,59 @@ describe("App (live reload & edit)", () => {
   });
 });
 
+describe("App (filter)", () => {
+  async function typeKeys(setup: { mockInput: { pressKey: (k: string) => void }; renderOnce: () => Promise<unknown> }, keys: string[]) {
+    for (const k of keys) {
+      await act(async () => {
+        setup.mockInput.pressKey(k);
+        // A lone ESC byte is held by the input parser briefly to see whether
+        // it starts an escape sequence; wait it out so the key is delivered.
+        if (k === "ESCAPE") await new Promise((r) => setTimeout(r, 80));
+      });
+    }
+    await setup.renderOnce();
+  }
+
+  test("/ then a query filters jobs everywhere", async () => {
+    const setup = await renderApp();
+    expect(setup.captureCharFrame()).toContain("health-check");
+
+    await typeKeys(setup, ["/", "b", "a", "c", "k", "u", "p", "RETURN"]);
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("2 of 9 jobs"); // status bar filter indicator (both backup jobs)
+    expect(frame).toContain("backup --incremental");
+    expect(frame).not.toContain("health-check");
+    setup.renderer.destroy();
+  });
+
+  test("escape clears an active filter", async () => {
+    const setup = await renderApp();
+    await typeKeys(setup, ["/", "b", "a", "c", "k", "u", "p", "RETURN"]);
+    await typeKeys(setup, ["ESCAPE"]);
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("health-check");
+    expect(frame).not.toContain("of 9 jobs");
+    setup.renderer.destroy();
+  });
+
+  test("escape while typing cancels without applying", async () => {
+    const setup = await renderApp();
+    const before = setup.captureCharFrame();
+    await typeKeys(setup, ["/", "x", "y", "ESCAPE"]);
+    expect(setup.captureCharFrame()).toBe(before);
+    setup.renderer.destroy();
+  });
+
+  test("digits typed into the query don't open the job view", async () => {
+    const setup = await renderApp();
+    await typeKeys(setup, ["/", "1"]);
+    const frame = setup.captureCharFrame();
+    expect(frame).not.toContain("ran:"); // no job overlay
+    expect(frame).toContain("1▌"); // it went into the query buffer
+    setup.renderer.destroy();
+  });
+});
+
 describe("App (empty crontab)", () => {
   test("shows a friendly empty state", async () => {
     const empty = parseCrontab("");
