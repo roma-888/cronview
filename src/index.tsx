@@ -27,6 +27,7 @@ Keys:
   [ / ]    previous / next month (month view) · week (week view)
   m / w    month / week view        t   jump to today
   a        12/24-hour clock         q / Esc  quit
+  1-9      peek at a job's output log (numbers in the detail pane)
 `;
 
 interface CliOptions {

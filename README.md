@@ -52,7 +52,8 @@ npm run demo                 # from a checkout: tour with examples/sample.cronta
 | `m` / `w` | month view / week view |
 | `t` | jump to today |
 | `a` | toggle 12/24-hour clock |
-| `q` / `Esc` | quit |
+| `1`–`9` | peek at a job's output log (numbers in the detail pane) |
+| `q` / `Esc` | quit (closes the log peek first) |
 
 These are the only bindings — every other key (and any modifier combo) is deliberately inert.
 
@@ -62,6 +63,10 @@ These are the only bindings — every other key (and any modifier combo) is deli
 - **Week** — 7-day × 24-hour grid; each cell shows the number of runs in that hour, colored by job. On short terminals the hour axis scrolls (`⋮`) to follow the cursor. The detail pane shows the selected day + hour with the exact minute pattern (`:00 :15 :30 …`).
 
 The layout fills the terminal at any size: columns split the full width, month cells grow taller as the terminal does, and the detail pane absorbs the remaining rows so it always sits directly under the grid. The minimum usable size is **66×22** — below that, cronview shows a resize notice instead of a broken layout.
+
+### Log peek
+
+Detail-pane rows are numbered; press a job's number to open the tail of its log. cronview finds the log by reading the job's own redirect (`>> /var/log/thing.log`), expanding `~` and `$VAR`s from the crontab's env lines. Jobs that redirect to `/dev/null` or don't redirect at all get a note explaining where the output went (discarded, or mailed by cron). `↑`/`↓` scrolls, `q`/`Esc` closes.
 
 ## What it understands
 

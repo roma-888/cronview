@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { act } from "react";
 import { testRender } from "@opentui/react/test-utils";
@@ -76,7 +77,7 @@ describe("App (month view)", () => {
     const setup = await renderApp();
     const before = setup.captureCharFrame();
     // Former vim/page aliases and a sample of random keys must all be inert.
-    for (const key of ["h", "j", "k", "l", "v", "x", "n", "1", " ", "RETURN", "TAB"]) {
+    for (const key of ["h", "j", "k", "l", "v", "x", "n", "0", " ", "RETURN", "TAB"]) {
       await act(async () => {
         setup.mockInput.pressKey(key);
       });
@@ -352,6 +353,83 @@ describe("App (12/24-hour clock)", () => {
     const frame = setup.captureCharFrame();
     expect(frame).toContain("12a");
     expect(frame).toMatch(/\d{1,2}:00[ap]m–\d{1,2}:59[ap]m/); // detail pane hour scope
+    setup.renderer.destroy();
+  });
+});
+
+describe("App (log peek)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "cronview-app-"));
+  const logPath = join(dir, "job.log");
+  writeFileSync(logPath, "backup started\nbackup finished\n");
+  // Sorted by first run: 1 = logger (00:00), 2 = report (07:30), 3 = devnull (09:00).
+  const logResult = parseCrontab(
+    [
+      `@daily logger-job >> ${logPath} 2>&1`,
+      "30 7 * * * report-job --no-redirect",
+      "0 9 * * * devnull-job > /dev/null",
+    ].join("\n"),
+  );
+
+  async function renderLogApp() {
+    const setup = await testRender(
+      <App result={logResult} initialView="month" initialDate={june10} source="test" />,
+      { width: 100, height: 38 },
+    );
+    await setup.renderOnce();
+    return setup;
+  }
+
+  async function press(setup: Awaited<ReturnType<typeof renderLogApp>>, key: string) {
+    await act(async () => {
+      setup.mockInput.pressKey(key);
+    });
+    await setup.renderOnce();
+  }
+
+  test("detail pane numbers its job rows", async () => {
+    const setup = await renderLogApp();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("1 ● ");
+    expect(frame).toContain("2 ● ");
+    expect(frame).toContain("3 ● ");
+    setup.renderer.destroy();
+  });
+
+  test("pressing a job's number opens its log tail; q returns to the calendar", async () => {
+    const setup = await renderLogApp();
+    await press(setup, "1");
+    const overlay = setup.captureCharFrame();
+    expect(overlay).toContain("backup started");
+    expect(overlay).toContain("backup finished");
+    expect(overlay).toContain(logPath);
+    expect(overlay).not.toContain("June 2026"); // calendar replaced
+
+    await press(setup, "q");
+    const back = setup.captureCharFrame();
+    expect(back).toContain("June 2026");
+    expect(back).not.toContain("backup started");
+    setup.renderer.destroy();
+  });
+
+  test("jobs without a redirect explain that cron mails output", async () => {
+    const setup = await renderLogApp();
+    await press(setup, "2");
+    expect(setup.captureCharFrame()).toContain("cron mails");
+    setup.renderer.destroy();
+  });
+
+  test("jobs redirecting to /dev/null explain the output is discarded", async () => {
+    const setup = await renderLogApp();
+    await press(setup, "3");
+    expect(setup.captureCharFrame()).toContain("discarded");
+    setup.renderer.destroy();
+  });
+
+  test("digits with no matching job are inert", async () => {
+    const setup = await renderLogApp();
+    const before = setup.captureCharFrame();
+    await press(setup, "9");
+    expect(setup.captureCharFrame()).toBe(before);
     setup.renderer.destroy();
   });
 });

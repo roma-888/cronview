@@ -5,6 +5,7 @@ import type { HourFormat, ViewMode } from "../types";
 import { UI, pad, truncate } from "./theme";
 
 interface DetailPaneProps {
+  /** Already filtered to what the pane shows (App owns the week-view hour filter). */
   infos: JobDayInfo[];
   cursor: Date;
   cursorHour: number;
@@ -26,7 +27,7 @@ export function DetailPane({
   hourFormat,
   crontabEmpty,
 }: DetailPaneProps) {
-  const shown = view === "week" ? infos.filter((i) => runsInHour(i, cursorHour) > 0) : infos;
+  const shown = infos;
 
   const hourLabel = formatHourRange(cursorHour, hourFormat);
   const scope = view === "week" ? ` · ${hourLabel}` : "";
@@ -70,10 +71,11 @@ export function DetailPane({
               : "No runs on this day."}
         </text>
       ) : (
-        visible.map((info) => (
+        visible.map((info, i) => (
           <JobLine
             key={info.job.id}
             info={info}
+            index={i}
             view={view}
             cursorHour={cursorHour}
             width={width}
@@ -88,12 +90,14 @@ export function DetailPane({
 
 function JobLine({
   info,
+  index,
   view,
   cursorHour,
   width,
   hourFormat,
 }: {
   info: JobDayInfo;
+  index: number;
   view: ViewMode;
   cursorHour: number;
   width: number;
@@ -108,10 +112,11 @@ function JobLine({
 
   const timeCol = pad(time, 20);
   const schedCol = pad(info.job.schedule, 16);
-  const cmdWidth = Math.max(8, width - 4 - timeCol.length - schedCol.length - 4);
+  const cmdWidth = Math.max(8, width - 6 - timeCol.length - schedCol.length - 4);
 
   return (
     <text>
+      <span fg={UI.dim}>{index < 9 ? `${index + 1} ` : "  "}</span>
       <span fg={info.job.color}>{"● "}</span>
       <span fg={UI.text}>{timeCol}</span>
       <span fg={UI.dim}>{`${schedCol}  `}</span>

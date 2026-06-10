@@ -11,11 +11,14 @@ import {
   startOfDay,
   weeksInMonthGrid,
 } from "../dates";
-import { dayInfosForRange, nextRunAcross } from "../schedule";
+import { dayInfosForRange, nextRunAcross, runsInHour } from "../schedule";
+import { outputTarget, readLogTail, type LogTail, type OutputTarget } from "../logs";
+import type { CronJob } from "../types";
 import { MonthView } from "./MonthView";
 import { WeekView } from "./WeekView";
 import { DetailPane } from "./DetailPane";
 import { StatusBar } from "./StatusBar";
+import { LogView, logContentRows } from "./LogView";
 import { UI, clamp, truncate } from "./theme";
 
 interface AppProps {
@@ -47,11 +50,55 @@ export function App({
   const [cursor, setCursor] = useState<Date>(startOfDay(initialDate));
   const [cursorHour, setCursorHour] = useState<number>(new Date().getHours());
   const [hourFormat, setHourFormat] = useState<HourFormat>(initialHourFormat);
+  const [log, setLog] = useState<{ job: CronJob; target: OutputTarget; tail: LogTail | null } | null>(
+    null,
+  );
+  const [logScroll, setLogScroll] = useState(0);
 
-  // The keymap is exactly what the status bar advertises: ←→ ↑↓ [ ] m w t a q (+Esc).
-  // Anything else — including modifier combos — is deliberately inert.
+  const cursorInfos = useMemo(
+    () => dayInfosForRange(result.jobs, cursor, 1).get(dateKey(cursor)) ?? [],
+    [result.jobs, dateKey(cursor)],
+  );
+
+  // The detail pane and the 1-9 log keys must agree on job numbering, so the
+  // week view's hour filter lives here rather than in the pane.
+  const shownInfos = useMemo(
+    () => (view === "week" ? cursorInfos.filter((i) => runsInHour(i, cursorHour) > 0) : cursorInfos),
+    [cursorInfos, view, cursorHour],
+  );
+
+  const maxLogScroll = log?.tail ? Math.max(0, log.tail.lines.length - logContentRows(height)) : 0;
+
+  // The keymap is exactly what the status bar advertises: ←→ ↑↓ [ ] m w t a 1-9 q
+  // (+Esc). Anything else — including modifier combos — is deliberately inert.
   useKeyboard((key) => {
     if (key.ctrl || key.meta || key.option) return;
+    // The log overlay captures all keys while open.
+    if (log) {
+      switch (key.name) {
+        case "q":
+        case "escape":
+          setLog(null);
+          break;
+        case "up":
+          setLogScroll((s) => Math.min(s + 1, maxLogScroll));
+          break;
+        case "down":
+          setLogScroll((s) => Math.max(s - 1, 0));
+          break;
+      }
+      return;
+    }
+    if (/^[1-9]$/.test(key.name)) {
+      const info = shownInfos[Number(key.name) - 1];
+      if (info) {
+        const target = outputTarget(info.job.command, result.env);
+        const tail = target.kind === "file" ? readLogTail(target.path) : null;
+        setLog({ job: info.job, target, tail });
+        setLogScroll(0);
+      }
+      return;
+    }
     switch (key.name) {
       case "q":
       case "escape":
@@ -96,11 +143,6 @@ export function App({
     }
   });
 
-  const cursorInfos = useMemo(
-    () => dayInfosForRange(result.jobs, cursor, 1).get(dateKey(cursor)) ?? [],
-    [result.jobs, dateKey(cursor)],
-  );
-
   const next = useMemo(() => nextRunAcross(result.jobs, new Date()), [result.jobs]);
 
   const monthLabel = `${MONTH_NAMES[cursor.getMonth()]} ${cursor.getFullYear()}`;
@@ -132,6 +174,19 @@ export function App({
         ) : null}
         <text fg={UI.dim}>resize the window, or press q to quit</text>
       </box>
+    );
+  }
+
+  if (log) {
+    return (
+      <LogView
+        job={log.job}
+        target={log.target}
+        tail={log.tail}
+        width={width}
+        height={height}
+        scroll={logScroll}
+      />
     );
   }
 
@@ -188,7 +243,7 @@ export function App({
         )}
       </box>
       <DetailPane
-        infos={cursorInfos}
+        infos={shownInfos}
         cursor={cursor}
         cursorHour={cursorHour}
         view={view}
