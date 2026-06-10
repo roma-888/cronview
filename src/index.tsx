@@ -3,7 +3,7 @@ import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { loadCrontabFile, loadUserCrontab, parseCrontab } from "./crontab";
 import { parseDateArg } from "./dates";
-import type { ViewMode } from "./types";
+import type { HourFormat, ViewMode } from "./types";
 import { App } from "./ui/App";
 
 const VERSION = "0.1.0";
@@ -17,6 +17,7 @@ Options:
   -f, --file <path>     Read a crontab file instead of \`crontab -l\`
   -v, --view <mode>     Initial view: month (default) or week
   -d, --date <date>     Initial date, YYYY-MM-DD (default: today)
+      --hours <12|24>   Clock format (default: 24)
   -h, --help            Show this help
       --version         Show version
 
@@ -25,17 +26,18 @@ Keys:
   ↑/↓      previous / next week (month view) · hour (week view)
   [ / ]    previous / next month (month view) · week (week view)
   m / w    month / week view        t   jump to today
-  q / Esc  quit
+  a        12/24-hour clock         q / Esc  quit
 `;
 
 interface CliOptions {
   file?: string;
   view: ViewMode;
   date: Date;
+  hours: HourFormat;
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  const opts: CliOptions = { view: "month", date: new Date() };
+  const opts: CliOptions = { view: "month", date: new Date(), hours: "24" };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     switch (arg) {
@@ -58,6 +60,12 @@ function parseArgs(argv: string[]): CliOptions {
         const value = argv[++i];
         if (value !== "month" && value !== "week") fail(`--view must be "month" or "week"`);
         opts.view = value;
+        break;
+      }
+      case "--hours": {
+        const value = argv[++i];
+        if (value !== "12" && value !== "24") fail(`--hours must be "12" or "24"`);
+        opts.hours = value;
         break;
       }
       case "-d":
@@ -102,5 +110,11 @@ const result = parseCrontab(text);
 // text selection) — cronview is keyboard-only.
 const renderer = await createCliRenderer({ exitOnCtrlC: true, useMouse: false });
 createRoot(renderer).render(
-  <App result={result} initialView={opts.view} initialDate={opts.date} source={source} />,
+  <App
+    result={result}
+    initialView={opts.view}
+    initialDate={opts.date}
+    source={source}
+    initialHourFormat={opts.hours}
+  />,
 );

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import type { CronJob } from "../types";
+import type { CronJob, HourFormat } from "../types";
 import { dayInfosForRange, runsInHour, type JobDayInfo } from "../schedule";
-import { DAY_NAMES, addDays, dateKey, isSameDay, startOfWeek } from "../dates";
+import { DAY_NAMES, addDays, dateKey, formatHourLabel, isSameDay, startOfWeek } from "../dates";
 import { UI, clamp, pad } from "./theme";
 
 interface WeekViewProps {
@@ -11,9 +11,17 @@ interface WeekViewProps {
   width: number;
   /** How many hour rows fit on screen. */
   maxHourRows: number;
+  hourFormat: HourFormat;
 }
 
-export function WeekView({ jobs, cursor, cursorHour, width, maxHourRows }: WeekViewProps) {
+export function WeekView({
+  jobs,
+  cursor,
+  cursorHour,
+  width,
+  maxHourRows,
+  hourFormat,
+}: WeekViewProps) {
   const weekStart = startOfWeek(cursor);
   const weekKey = dateKey(weekStart);
 
@@ -58,6 +66,7 @@ export function WeekView({ jobs, cursor, cursorHour, width, maxHourRows }: WeekV
           cursorHour={cursorHour}
           labelW={labelW}
           cellW={cellW}
+          hourFormat={hourFormat}
         />
       ))}
       {hours.bottom ? <text fg={UI.faint}>{pad("  ⋮", labelW)}</text> : null}
@@ -89,14 +98,24 @@ interface HourRowProps {
   cursorHour: number;
   labelW: number;
   cellW: number;
+  hourFormat: HourFormat;
 }
 
-function HourRow({ hour, days, infosByDay, cursor, cursorHour, labelW, cellW }: HourRowProps) {
+function HourRow({
+  hour,
+  days,
+  infosByDay,
+  cursor,
+  cursorHour,
+  labelW,
+  cellW,
+  hourFormat,
+}: HourRowProps) {
   const isCursorRow = hour === cursorHour;
   return (
     <box style={{ flexDirection: "row" }}>
       <text fg={isCursorRow ? UI.accent : UI.dim}>
-        {pad(` ${String(hour).padStart(2, "0")}`, labelW)}
+        {pad(formatHourLabel(hour, hourFormat).padStart(3), labelW)}
       </text>
       {days.map((day, i) => {
         const infos = infosByDay.get(dateKey(day)) ?? [];

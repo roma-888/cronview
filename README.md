@@ -37,6 +37,7 @@ cronview                     # your crontab (`crontab -l`), month view, today
 cronview --file path         # any crontab file
 cronview --view week         # start in the week view
 cronview --date 2026-07-01   # start on a specific date
+cronview --hours 12          # 12-hour clock (default: 24)
 
 npm run demo                 # from a checkout: tour with examples/sample.crontab
 ```
@@ -50,6 +51,7 @@ npm run demo                 # from a checkout: tour with examples/sample.cronta
 | `[` `]` | previous / next month (month view) · week (week view) |
 | `m` / `w` | month view / week view |
 | `t` | jump to today |
+| `a` | toggle 12/24-hour clock |
 | `q` / `Esc` | quit |
 
 These are the only bindings — every other key (and any modifier combo) is deliberately inert.

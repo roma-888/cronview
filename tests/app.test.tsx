@@ -12,9 +12,15 @@ const result = parseCrontab(sample);
 // Fixed reference date: Wednesday, June 10, 2026.
 const june10 = new Date(2026, 5, 10);
 
-async function renderApp(view: "month" | "week" = "month") {
+async function renderApp(view: "month" | "week" = "month", hours: "12" | "24" = "24") {
   const setup = await testRender(
-    <App result={result} initialView={view} initialDate={june10} source="sample" />,
+    <App
+      result={result}
+      initialView={view}
+      initialDate={june10}
+      source="sample"
+      initialHourFormat={hours}
+    />,
     { width: 100, height: 38 },
   );
   await setup.renderOnce();
@@ -304,6 +310,48 @@ describe("App (minimum size)", () => {
     expect(frame).not.toContain("Terminal too small");
     expect(frame).toContain("June 2026");
     expect(frame).toContain("Sat");
+    setup.renderer.destroy();
+  });
+});
+
+describe("App (12/24-hour clock)", () => {
+  test("a toggles week-view hour labels to 12-hour and back", async () => {
+    const setup = await renderApp("week");
+    expect(setup.captureCharFrame()).toContain(" 09 ");
+    await act(async () => {
+      setup.mockInput.pressKey("a");
+    });
+    await setup.renderOnce();
+    const twelve = setup.captureCharFrame();
+    expect(twelve).toContain("12a");
+    expect(twelve).toContain("12p");
+    expect(twelve).not.toContain(" 09 ");
+    await act(async () => {
+      setup.mockInput.pressKey("a");
+    });
+    await setup.renderOnce();
+    expect(setup.captureCharFrame()).toContain(" 09 ");
+    setup.renderer.destroy();
+  });
+
+  test("detail pane times follow the clock format", async () => {
+    const setup = await renderApp();
+    expect(setup.captureCharFrame()).toContain("02:30");
+    await act(async () => {
+      setup.mockInput.pressKey("a");
+    });
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("2:30am");
+    expect(frame).not.toContain("02:30");
+    setup.renderer.destroy();
+  });
+
+  test("initialHourFormat=12 starts in 12-hour mode", async () => {
+    const setup = await renderApp("week", "12");
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("12a");
+    expect(frame).toMatch(/\d{1,2}:00[ap]m–\d{1,2}:59[ap]m/); // detail pane hour scope
     setup.renderer.destroy();
   });
 });

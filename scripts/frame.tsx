@@ -1,5 +1,5 @@
 // Dev tool: render a cronview frame to stdout without a TTY.
-// Usage: bun scripts/frame.tsx [month|week] [WIDTHxHEIGHT]
+// Usage: bun scripts/frame.tsx [month|week] [WIDTHxHEIGHT] [12|24]
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { testRender } from "@opentui/react/test-utils";
@@ -15,8 +15,16 @@ const size = /^(\d+)x(\d+)$/.exec(process.argv[3] ?? "");
 const width = size ? Number(size[1]) : 100;
 const height = size ? Number(size[2]) : 36;
 
+const hours = (process.argv[4] === "12" ? "12" : "24") as "12" | "24";
+
 const setup = await testRender(
-  <App result={result} initialView={view} initialDate={june10} source="sample" />,
+  <App
+    result={result}
+    initialView={view}
+    initialDate={june10}
+    source="sample"
+    initialHourFormat={hours}
+  />,
   { width, height },
 );
 await setup.renderOnce();

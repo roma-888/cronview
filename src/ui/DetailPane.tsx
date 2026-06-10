@@ -1,7 +1,7 @@
 import type { JobDayInfo } from "../schedule";
 import { runsInHour, totalRuns } from "../schedule";
-import { formatDayLong, formatHM } from "../dates";
-import type { ViewMode } from "../types";
+import { formatDayLong, formatHM, formatHourRange, hour12 } from "../dates";
+import type { HourFormat, ViewMode } from "../types";
 import { UI, pad, truncate } from "./theme";
 
 interface DetailPaneProps {
@@ -12,6 +12,7 @@ interface DetailPaneProps {
   width: number;
   /** Total rows available including the title row. */
   height: number;
+  hourFormat: HourFormat;
   crontabEmpty: boolean;
 }
 
@@ -22,11 +23,12 @@ export function DetailPane({
   view,
   width,
   height,
+  hourFormat,
   crontabEmpty,
 }: DetailPaneProps) {
   const shown = view === "week" ? infos.filter((i) => runsInHour(i, cursorHour) > 0) : infos;
 
-  const hourLabel = `${String(cursorHour).padStart(2, "0")}:00–${String(cursorHour).padStart(2, "0")}:59`;
+  const hourLabel = formatHourRange(cursorHour, hourFormat);
   const scope = view === "week" ? ` · ${hourLabel}` : "";
   const runs = view === "week"
     ? shown.reduce((sum, i) => sum + runsInHour(i, cursorHour), 0)
@@ -69,7 +71,14 @@ export function DetailPane({
         </text>
       ) : (
         visible.map((info) => (
-          <JobLine key={info.job.id} info={info} view={view} cursorHour={cursorHour} width={width} />
+          <JobLine
+            key={info.job.id}
+            info={info}
+            view={view}
+            cursorHour={cursorHour}
+            width={width}
+            hourFormat={hourFormat}
+          />
         ))
       )}
       {hidden > 0 ? <text fg={UI.dim}>{`  … +${hidden} more`}</text> : null}
@@ -82,18 +91,20 @@ function JobLine({
   view,
   cursorHour,
   width,
+  hourFormat,
 }: {
   info: JobDayInfo;
   view: ViewMode;
   cursorHour: number;
   width: number;
+  hourFormat: HourFormat;
 }) {
   const time =
     view === "week"
-      ? minutesLabel(info.minutes, cursorHour)
+      ? minutesLabel(info.minutes, cursorHour, hourFormat)
       : info.count > 1
-        ? `${formatHM(info.first)} ×${info.count}`
-        : formatHM(info.first);
+        ? `${formatHM(info.first, hourFormat)} ×${info.count}`
+        : formatHM(info.first, hourFormat);
 
   const timeCol = pad(time, 20);
   const schedCol = pad(info.job.schedule, 16);
@@ -109,11 +120,16 @@ function JobLine({
   );
 }
 
-function minutesLabel(minutes: number[], hour: number): string {
-  const hh = String(hour).padStart(2, "0");
-  if (minutes.length === 1) return `${hh}:${String(minutes[0]).padStart(2, "0")}`;
+function minutesLabel(minutes: number[], hour: number, fmt: HourFormat): string {
+  const { h, suffix } = hour12(hour);
+  if (minutes.length === 1) {
+    const mm = String(minutes[0]).padStart(2, "0");
+    return fmt === "12" ? `${h}:${mm}${suffix}` : `${String(hour).padStart(2, "0")}:${mm}`;
+  }
+  // Multi-run prefix: "13h" in 24-hour mode, "1pm" in 12-hour mode.
+  const prefix = fmt === "12" ? `${h}${suffix}` : `${String(hour).padStart(2, "0")}h`;
   const shownCount = 3;
   const parts = minutes.slice(0, shownCount).map((m) => `:${String(m).padStart(2, "0")}`);
   const extra = minutes.length - shownCount;
-  return `${hh}h ${parts.join(" ")}${extra > 0 ? ` +${extra}` : ""}`;
+  return `${prefix} ${parts.join(" ")}${extra > 0 ? ` +${extra}` : ""}`;
 }

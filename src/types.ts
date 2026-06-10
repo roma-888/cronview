@@ -30,3 +30,5 @@ export interface ParseResult {
 }
 
 export type ViewMode = "month" | "week";
+
+export type HourFormat = "24" | "12";

@@ -1,3 +1,5 @@
+import type { HourFormat } from "./types";
+
 export const MONTH_NAMES = [
   "January",
   "February",
@@ -74,8 +76,37 @@ export function dateKey(d: Date): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-export function formatHM(d: Date): string {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+/** 24-hour clock hour to its 12-hour equivalent: 0 → 12am, 12 → 12pm, 13 → 1pm. */
+export function hour12(h: number): { h: number; suffix: "am" | "pm" } {
+  return { h: h % 12 === 0 ? 12 : h % 12, suffix: h < 12 ? "am" : "pm" };
+}
+
+export function formatHM(d: Date, fmt: HourFormat = "24"): string {
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  if (fmt === "12") {
+    const { h, suffix } = hour12(d.getHours());
+    return `${h}:${mm}${suffix}`;
+  }
+  return `${String(d.getHours()).padStart(2, "0")}:${mm}`;
+}
+
+/** Week-view axis label: "09" or, in 12-hour mode, "9a" / "12p". */
+export function formatHourLabel(hour: number, fmt: HourFormat): string {
+  if (fmt === "12") {
+    const { h, suffix } = hour12(hour);
+    return `${h}${suffix[0]}`;
+  }
+  return String(hour).padStart(2, "0");
+}
+
+/** Full-hour range: "13:00–13:59" or, in 12-hour mode, "1:00pm–1:59pm". */
+export function formatHourRange(hour: number, fmt: HourFormat): string {
+  if (fmt === "12") {
+    const { h, suffix } = hour12(hour);
+    return `${h}:00${suffix}–${h}:59${suffix}`;
+  }
+  const hh = String(hour).padStart(2, "0");
+  return `${hh}:00–${hh}:59`;
 }
 
 export function formatDayLong(d: Date): string {

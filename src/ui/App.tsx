@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
-import type { ParseResult, ViewMode } from "../types";
+import type { HourFormat, ParseResult, ViewMode } from "../types";
 import {
   MONTH_NAMES,
   addDays,
@@ -23,6 +23,7 @@ interface AppProps {
   initialView: ViewMode;
   initialDate: Date;
   source: string;
+  initialHourFormat?: HourFormat;
 }
 
 /**
@@ -33,14 +34,21 @@ interface AppProps {
 export const MIN_WIDTH = 66;
 export const MIN_HEIGHT = 22;
 
-export function App({ result, initialView, initialDate, source }: AppProps) {
+export function App({
+  result,
+  initialView,
+  initialDate,
+  source,
+  initialHourFormat = "24",
+}: AppProps) {
   const renderer = useRenderer();
   const { width, height } = useTerminalDimensions();
   const [view, setView] = useState<ViewMode>(initialView);
   const [cursor, setCursor] = useState<Date>(startOfDay(initialDate));
   const [cursorHour, setCursorHour] = useState<number>(new Date().getHours());
+  const [hourFormat, setHourFormat] = useState<HourFormat>(initialHourFormat);
 
-  // The keymap is exactly what the status bar advertises: ←→ ↑↓ [ ] m w t q (+Esc).
+  // The keymap is exactly what the status bar advertises: ←→ ↑↓ [ ] m w t a q (+Esc).
   // Anything else — including modifier combos — is deliberately inert.
   useKeyboard((key) => {
     if (key.ctrl || key.meta || key.option) return;
@@ -55,6 +63,9 @@ export function App({ result, initialView, initialDate, source }: AppProps) {
         break;
       case "w":
         setView("week");
+        break;
+      case "a":
+        setHourFormat((f) => (f === "24" ? "12" : "24"));
         break;
       case "t": {
         const now = new Date();
@@ -94,7 +105,7 @@ export function App({ result, initialView, initialDate, source }: AppProps) {
 
   const monthLabel = `${MONTH_NAMES[cursor.getMonth()]} ${cursor.getFullYear()}`;
   const nextLabel = next
-    ? `next: ${isSameDay(next.at, new Date()) ? "today" : `${MONTH_NAMES[next.at.getMonth()]!.slice(0, 3)} ${next.at.getDate()}`} ${formatHM(next.at)} ${truncate(next.job.command, 28)}`
+    ? `next: ${isSameDay(next.at, new Date()) ? "today" : `${MONTH_NAMES[next.at.getMonth()]!.slice(0, 3)} ${next.at.getDate()}`} ${formatHM(next.at, hourFormat)} ${truncate(next.job.command, 28)}`
     : "";
 
   // Either undersized dimension alone is enough to break the layout, so each
@@ -172,6 +183,7 @@ export function App({ result, initialView, initialDate, source }: AppProps) {
             cursorHour={cursorHour}
             width={width - 2}
             maxHourRows={maxHourRows}
+            hourFormat={hourFormat}
           />
         )}
       </box>
@@ -182,6 +194,7 @@ export function App({ result, initialView, initialDate, source }: AppProps) {
         view={view}
         width={width}
         height={detailHeight}
+        hourFormat={hourFormat}
         crontabEmpty={result.jobs.length === 0 && result.reboots.length === 0}
       />
       <StatusBar view={view} result={result} />
