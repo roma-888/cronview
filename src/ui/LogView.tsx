@@ -114,7 +114,7 @@ export function LogView({
           </text>
         ))}
       </box>
-      <text fg={UI.dim}>{` ↑↓ scroll · q close${position}`}</text>
+      <text fg={UI.dim}>{` ↑↓ scroll · r refresh · q close${position}`}</text>
     </box>
   );
 }

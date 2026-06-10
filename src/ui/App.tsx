@@ -162,6 +162,15 @@ export function App({
         case "escape":
           setLog(null);
           break;
+        case "r":
+          if (log.target.kind === "file") {
+            const tail = readLogTail(log.target.path);
+            setLog({ ...log, tail });
+            setLogScroll((s) =>
+              Math.min(s, tail ? Math.max(0, tail.lines.length - logContentRows(height)) : 0),
+            );
+          }
+          break;
         case "up":
           setLogScroll((s) => Math.min(s + 1, maxLogScroll));
           break;

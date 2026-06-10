@@ -466,6 +466,25 @@ describe("App (log peek)", () => {
     setup.renderer.destroy();
   });
 
+  test("r reloads the open job's log in place", async () => {
+    const path = join(dir, "refresh.log");
+    writeFileSync(path, "first line\n");
+    const result = parseCrontab(`@daily refresh-job >> ${path}`);
+    const setup = await testRender(
+      <App result={result} initialView="month" initialDate={june10} source="test" />,
+      { width: 100, height: 38 },
+    );
+    await setup.renderOnce();
+    await press(setup, "1");
+    expect(setup.captureCharFrame()).toContain("first line");
+
+    writeFileSync(path, "first line\nsecond line\n");
+    await press(setup, "r");
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("second line");
+    setup.renderer.destroy();
+  });
+
   test("digits with no matching job are inert", async () => {
     const setup = await renderLogApp();
     const before = setup.captureCharFrame();
