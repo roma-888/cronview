@@ -2,98 +2,31 @@
 import { spawnSync } from "node:child_process";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
+import { CliError, HELP, VERSION, parseArgs, type CliOptions } from "./cli";
 import { loadCrontabFile, loadUserCrontab, parseCrontab } from "./crontab";
-import { parseDateArg } from "./dates";
-import type { HourFormat, ViewMode } from "./types";
 import { App } from "./ui/App";
-
-const VERSION = "0.3.0";
-
-const HELP = `cronview ${VERSION} — terminal calendar viewer for your cron jobs
-
-Usage:
-  cronview [options]
-
-Options:
-  -f, --file <path>     Read a crontab file instead of \`crontab -l\`
-  -v, --view <mode>     Initial view: month (default) or week
-  -d, --date <date>     Initial date, YYYY-MM-DD (default: today)
-      --hours <12|24>   Clock format (default: 24)
-  -h, --help            Show this help
-      --version         Show version
-
-Keys:
-  ←/→      previous / next day
-  ↑/↓      previous / next week (month view) · hour (week view)
-  [ / ]    previous / next month (month view) · week (week view)
-  m / w    month / week view        t   jump to today
-  a        12/24-hour clock         q / Esc  quit
-  e        edit the crontab in your editor, reload on exit
-  1-9      peek at a job's output log (numbers in the detail pane)
-
-The calendar also live-reloads within a few seconds when the crontab changes.
-`;
-
-interface CliOptions {
-  file?: string;
-  view: ViewMode;
-  date: Date;
-  hours: HourFormat;
-}
-
-function parseArgs(argv: string[]): CliOptions {
-  const opts: CliOptions = { view: "month", date: new Date(), hours: "24" };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]!;
-    switch (arg) {
-      case "-h":
-      case "--help":
-        console.log(HELP);
-        process.exit(0);
-      case "--version":
-        console.log(VERSION);
-        process.exit(0);
-      case "-f":
-      case "--file": {
-        const value = argv[++i];
-        if (!value) fail(`${arg} requires a path`);
-        opts.file = value;
-        break;
-      }
-      case "-v":
-      case "--view": {
-        const value = argv[++i];
-        if (value !== "month" && value !== "week") fail(`--view must be "month" or "week"`);
-        opts.view = value;
-        break;
-      }
-      case "--hours": {
-        const value = argv[++i];
-        if (value !== "12" && value !== "24") fail(`--hours must be "12" or "24"`);
-        opts.hours = value;
-        break;
-      }
-      case "-d":
-      case "--date": {
-        const value = argv[++i];
-        const date = value ? parseDateArg(value) : null;
-        if (!date) fail(`--date must be a valid YYYY-MM-DD date`);
-        opts.date = date;
-        break;
-      }
-      default:
-        fail(`unknown option: ${arg} (try --help)`);
-    }
-  }
-  return opts;
-}
 
 function fail(message: string): never {
   console.error(`cronview: ${message}`);
   process.exit(1);
 }
 
-const opts = parseArgs(process.argv.slice(2));
+let opts: CliOptions;
+try {
+  const parsed = parseArgs(process.argv.slice(2));
+  if (parsed.kind === "help") {
+    console.log(HELP);
+    process.exit(0);
+  }
+  if (parsed.kind === "version") {
+    console.log(VERSION);
+    process.exit(0);
+  }
+  opts = parsed.options;
+} catch (err) {
+  if (err instanceof CliError) fail(err.message);
+  throw err;
+}
 
 let text: string;
 let source: string;
@@ -108,15 +41,20 @@ if (opts.file) {
   }
   source = file;
   readSource = () => loadCrontabFile(file);
+  // --editor may carry arguments ("code -w"); the file path goes last.
+  const editor = opts.editor ?? process.env.VISUAL ?? process.env.EDITOR ?? "vi";
+  const [cmd, ...args] = editor.split(/\s+/) as [string, ...string[]];
   runEditor = () => {
-    spawnSync(process.env.VISUAL || process.env.EDITOR || "vi", [file], { stdio: "inherit" });
+    spawnSync(cmd, [...args, file], { stdio: "inherit" });
   };
 } else {
   text = loadUserCrontab();
   source = "crontab -l";
   readSource = () => loadUserCrontab();
+  // crontab -e picks its own editor from VISUAL/EDITOR, so --editor overrides via env.
+  const env = opts.editor ? { ...process.env, VISUAL: opts.editor } : process.env;
   runEditor = () => {
-    spawnSync("crontab", ["-e"], { stdio: "inherit" });
+    spawnSync("crontab", ["-e"], { stdio: "inherit", env });
   };
 }
 

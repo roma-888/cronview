@@ -38,6 +38,7 @@ cronview --file path         # any crontab file
 cronview --view week         # start in the week view
 cronview --date 2026-07-01   # start on a specific date
 cronview --hours 12          # 12-hour clock (default: 24)
+cronview --editor nano       # editor for the e key (default: $VISUAL/$EDITOR, else vi)
 
 npm run demo                 # from a checkout: tour with examples/sample.crontab
 ```
