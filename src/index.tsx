@@ -49,7 +49,11 @@ if (opts.file) {
     spawnSync(cmd, [...args, file], { stdio: "inherit" });
   };
 } else {
-  text = loadUserCrontab();
+  try {
+    text = loadUserCrontab();
+  } catch (err) {
+    fail(`cannot read your crontab: ${err instanceof Error ? err.message : err}`);
+  }
   source = "crontab -l";
   readSource = () => loadUserCrontab();
   // crontab -e picks its own editor from VISUAL/EDITOR, so --editor overrides via env.

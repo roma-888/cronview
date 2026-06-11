@@ -109,6 +109,7 @@ export function App({
         log.job.command,
         result.jobs.filter((j) => runsAt(j, at)).length,
         history.coverageStart,
+        history.fetchedAt,
       ),
     }));
     return { items };

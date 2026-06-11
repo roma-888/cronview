@@ -65,7 +65,7 @@ export function DetailPane({
       {visible.length === 0 ? (
         <text fg={UI.dim}>
           {crontabEmpty
-            ? "No cron jobs found. Try: cronview --file examples/sample.crontab"
+            ? "No cron jobs found — add one with crontab -e, or try cronview --file <crontab>"
             : view === "week"
               ? `No runs between ${hourLabel}.`
               : "No runs on this day."}

@@ -18,6 +18,13 @@ const LINUX_LOG = `2026-06-10T02:30:01+0200 myhost CRON[1234]: (roma) CMD (backu
 `;
 
 describe("parseUnifiedLog (macOS)", () => {
+  test("a recycled PID on a different minute is a separate run", () => {
+    const recycled = `2026-06-08 02:30:00.100000-0400  localhost cron[5555]: (libsystem_info.dylib) Created Activity ID: 0x1, Description: Retrieve User by Name
+2026-06-10 02:30:00.100000-0400  localhost cron[5555]: (libsystem_info.dylib) Created Activity ID: 0x2, Description: Retrieve User by Name
+`;
+    expect(parseUnifiedLog(recycled).length).toBe(2);
+  });
+
   test("one anonymous record per cron PID, minute precision", () => {
     const records = parseUnifiedLog(MACOS_LOG);
     expect(records.length).toBe(2);
@@ -67,5 +74,14 @@ describe("runStatus", () => {
     expect(runStatus(index, new Date(2026, 5, 7, 2, 30), "backup --full", 1, coverageStart)).toBe(
       "unknown",
     );
+  });
+
+  test("at or after the fetch time is unknown, not missing", () => {
+    const fetchedAt = new Date(2026, 5, 10, 12, 0);
+    // The snapshot can't know about runs scheduled after it was taken.
+    expect(runStatus(index, new Date(2026, 5, 10, 13, 0), "x", 1, coverageStart, fetchedAt)).toBe(
+      "unknown",
+    );
+    expect(runStatus(index, fetchedAt, "x", 1, coverageStart, fetchedAt)).toBe("unknown");
   });
 });

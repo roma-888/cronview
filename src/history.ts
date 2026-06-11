@@ -11,6 +11,8 @@ export interface RunHistory {
   records: RunRecord[];
   /** Runs scheduled before this can't be judged from the fetched window. */
   coverageStart: Date;
+  /** Snapshot time — runs scheduled at or after it can't be judged either. */
+  fetchedAt: Date;
   /** Why history is empty or unreliable, for the UI. */
   note?: string;
 }
@@ -24,6 +26,7 @@ export type RunStatus = "ran" | "missing" | "ambiguous" | "unknown";
  * "Retrieve User by Name" lines. One anonymous record per PID.
  */
 export function parseUnifiedLog(text: string): RunRecord[] {
+  // Dedupe per PID *and* minute — PIDs recycle within a multi-day window.
   const seen = new Set<string>();
   const records: RunRecord[] = [];
   const re =
@@ -32,8 +35,9 @@ export function parseUnifiedLog(text: string): RunRecord[] {
     const m = re.exec(line);
     if (!m) continue;
     const [, day, hm, tz, pid] = m as unknown as [string, string, string, string, string];
-    if (seen.has(pid)) continue;
-    seen.add(pid);
+    const key = `${pid}|${day}T${hm}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     const at = new Date(`${day}T${hm}:00${tz}`);
     if (!Number.isNaN(at.getTime())) records.push({ at });
   }
@@ -95,8 +99,11 @@ export function runStatus(
   command: string,
   scheduledCount: number,
   coverageStart: Date,
+  fetchedAt?: Date,
 ): RunStatus {
   if (at < coverageStart) return "unknown";
+  // The snapshot can't testify about runs scheduled after it was taken.
+  if (fetchedAt && at >= fetchedAt) return "unknown";
   const entry = index.get(minuteKey(at));
   if (!entry) return "missing";
   if (entry.commands.includes(command)) return "ran";
@@ -117,6 +124,7 @@ function run(cmd: string, args: string[]): Promise<string> {
 /** Fetch the last `days` of cron run evidence from the system log. */
 export async function fetchHistory(days: number): Promise<RunHistory> {
   const coverageStart = new Date(Date.now() - days * 24 * 3600 * 1000);
+  const fetchedAt = new Date();
   try {
     let records: RunRecord[];
     if (process.platform === "darwin") {
@@ -145,14 +153,20 @@ export async function fetchHistory(days: number): Promise<RunHistory> {
       return {
         records: [],
         coverageStart,
+        fetchedAt,
         note: `run history isn't supported on ${process.platform}`,
       };
     }
     if (records.length === 0) {
-      return { records, coverageStart, note: `no cron entries in the system log (last ${days}d)` };
+      return {
+        records,
+        coverageStart,
+        fetchedAt,
+        note: `no cron entries in the system log (last ${days}d)`,
+      };
     }
-    return { records, coverageStart };
+    return { records, coverageStart, fetchedAt };
   } catch {
-    return { records: [], coverageStart, note: "couldn't read the system log" };
+    return { records: [], coverageStart, fetchedAt, note: "couldn't read the system log" };
   }
 }

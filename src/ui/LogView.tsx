@@ -138,16 +138,20 @@ function RanLine({
     return <text fg={UI.dim}>{truncate(` ran:  ${ran.note ?? "no past runs"}`, width - 1)}</text>;
   }
   // ✓/✗ marks are judged per scheduled run; "·" means before log coverage.
-  // Colored spans can't truncate like plain text, so drop items that won't fit.
-  const perItem = 21; // "✓ Wed Jun 10 17:50 · "
-  const items = ran.items.slice(0, Math.max(1, Math.floor((width - 8) / perItem)));
+  // Colored spans can't truncate like plain text, so greedily take items that
+  // fit the measured label widths (12-hour labels are wider than 24-hour).
   const spans = [];
-  for (let i = 0; i < items.length; i++) {
-    const r = items[i]!;
+  let used = 7; // " ran:  "
+  for (let i = 0; i < ran.items.length; i++) {
+    const r = ran.items[i]!;
+    const label = runLabel(r.at);
+    const itemW = 2 + label.length + (i > 0 ? 3 : 0);
+    if (i > 0 && used + itemW > width - 1) break;
+    used += itemW;
     if (i > 0) spans.push(<span key={`s${i}`} fg={UI.dim}>{" · "}</span>);
     spans.push(
       <span key={`g${i}`} fg={STATUS_COLOR[r.status]}>{`${STATUS_GLYPH[r.status]} `}</span>,
-      <span key={`t${i}`} fg={UI.text}>{runLabel(r.at)}</span>,
+      <span key={`t${i}`} fg={UI.text}>{label}</span>,
     );
   }
   return (

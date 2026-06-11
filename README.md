@@ -91,7 +91,7 @@ Run counts are computed with field math (`|minutes| × |hours|` on matching days
 
 ```sh
 bun install
-bun test              # 75 tests: parser, schedule math, dates, log discovery, full-UI render tests
+bun test              # parser, schedule math, dates, logs, history, explainer, CLI, full-UI render suites
 npx tsc --noEmit      # typecheck
 bun scripts/frame.tsx week 120x40 12   # print a rendered frame without a TTY (12/24-hour optional)
 ```

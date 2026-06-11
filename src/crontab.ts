@@ -131,12 +131,19 @@ function stripQuotes(s: string): string {
   return s;
 }
 
-/** Read the current user's crontab. Returns '' when no crontab exists. */
+/**
+ * Read the current user's crontab. Returns '' when no crontab exists, but
+ * rethrows other failures so live reload keeps the last good parse instead of
+ * mistaking a transient error for an empty crontab.
+ */
 export function loadUserCrontab(): string {
   try {
     return execFileSync("crontab", ["-l"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  } catch {
-    return "";
+  } catch (err) {
+    const stderr =
+      err && typeof err === "object" && "stderr" in err ? String((err as { stderr: unknown }).stderr ?? "") : "";
+    if (/no crontab for/i.test(stderr)) return "";
+    throw err;
   }
 }
 

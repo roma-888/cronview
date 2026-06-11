@@ -67,10 +67,11 @@ end
 EOF
 
 cd "$work/tap"
-if git diff --quiet; then
+git add -A
+if git diff --cached --quiet; then
   echo "update-tap: formula already at ${version}, nothing to do"
   exit 0
 fi
-git commit -aqm "cronview ${version}"
+git commit -qm "cronview ${version}"
 git push -q
 echo "✓ tap updated: brew install ${TAP%%/homebrew-*}/tap/cronview → ${version}"

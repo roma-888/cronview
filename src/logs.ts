@@ -62,15 +62,17 @@ export function readLogTail(path: string, maxLines = 500): LogTail | null {
     const size = statSync(path).size;
     const len = Math.min(size, TAIL_BYTES);
     const buf = Buffer.alloc(len);
+    let read = 0;
     if (len > 0) {
       const fd = openSync(path, "r");
       try {
-        readSync(fd, buf, 0, len, size - len);
+        // The file may shrink between stat and read; trust what was read.
+        read = readSync(fd, buf, 0, len, size - len);
       } finally {
         closeSync(fd);
       }
     }
-    let lines = len > 0 ? buf.toString("utf8").split("\n") : [];
+    let lines = read > 0 ? buf.toString("utf8", 0, read).split("\n") : [];
     if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
     if (size > len) lines.shift(); // first line may be cut mid-way
     if (lines.length > maxLines) lines = lines.slice(-maxLines);

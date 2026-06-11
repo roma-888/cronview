@@ -443,6 +443,7 @@ describe("App (log peek)", () => {
     const loadHistory = async () => ({
       records: [{ at: today, command: loggerCommand }], // ran today, no record yesterday
       coverageStart: new Date(yesterday.getTime() - 24 * 3600 * 1000),
+      fetchedAt: new Date(),
     });
     const text = "";
     const setup = await testRender(
@@ -485,10 +486,11 @@ describe("App (log peek)", () => {
     setup.renderer.destroy();
   });
 
-  test("the ran line drops items rather than wrapping on narrow terminals", async () => {
+  async function expectNoRanWrap(width: number, hours: "12" | "24") {
     const loadHistory = async () => ({
       records: [],
       coverageStart: new Date(Date.now() - 7 * 24 * 3600 * 1000),
+      fetchedAt: new Date(),
     });
     const setup = await testRender(
       <App
@@ -496,9 +498,10 @@ describe("App (log peek)", () => {
         initialView="month"
         initialDate={june10}
         source="test"
+        initialHourFormat={hours}
         loadHistory={loadHistory}
       />,
-      { width: 70, height: 38 },
+      { width, height: 38 },
     );
     await setup.renderOnce();
     await act(async () => {});
@@ -509,6 +512,14 @@ describe("App (log peek)", () => {
     expect(ranIdx).toBeGreaterThan(0);
     expect(logIdx).toBe(ranIdx + 1); // ran line stayed on one row — no wrap
     setup.renderer.destroy();
+  }
+
+  test("the ran line drops items rather than wrapping on narrow terminals", async () => {
+    await expectNoRanWrap(70, "24");
+  });
+
+  test("the ran line doesn't wrap with wider 12-hour labels", async () => {
+    await expectNoRanWrap(113, "12");
   });
 
   test("digits with no matching job are inert", async () => {
