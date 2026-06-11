@@ -485,6 +485,32 @@ describe("App (log peek)", () => {
     setup.renderer.destroy();
   });
 
+  test("the ran line drops items rather than wrapping on narrow terminals", async () => {
+    const loadHistory = async () => ({
+      records: [],
+      coverageStart: new Date(Date.now() - 7 * 24 * 3600 * 1000),
+    });
+    const setup = await testRender(
+      <App
+        result={logResult}
+        initialView="month"
+        initialDate={june10}
+        source="test"
+        loadHistory={loadHistory}
+      />,
+      { width: 70, height: 38 },
+    );
+    await setup.renderOnce();
+    await act(async () => {});
+    await press(setup, "1");
+    const lines = setup.captureCharFrame().split("\n");
+    const ranIdx = lines.findIndex((l) => l.includes("ran:"));
+    const logIdx = lines.findIndex((l) => l.startsWith(" log"));
+    expect(ranIdx).toBeGreaterThan(0);
+    expect(logIdx).toBe(ranIdx + 1); // ran line stayed on one row — no wrap
+    setup.renderer.destroy();
+  });
+
   test("digits with no matching job are inert", async () => {
     const setup = await renderLogApp();
     const before = setup.captureCharFrame();

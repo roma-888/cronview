@@ -138,9 +138,12 @@ function RanLine({
     return <text fg={UI.dim}>{truncate(` ran:  ${ran.note ?? "no past runs"}`, width - 1)}</text>;
   }
   // ✓/✗ marks are judged per scheduled run; "·" means before log coverage.
+  // Colored spans can't truncate like plain text, so drop items that won't fit.
+  const perItem = 21; // "✓ Wed Jun 10 17:50 · "
+  const items = ran.items.slice(0, Math.max(1, Math.floor((width - 8) / perItem)));
   const spans = [];
-  for (let i = 0; i < ran.items.length; i++) {
-    const r = ran.items[i]!;
+  for (let i = 0; i < items.length; i++) {
+    const r = items[i]!;
     if (i > 0) spans.push(<span key={`s${i}`} fg={UI.dim}>{" · "}</span>);
     spans.push(
       <span key={`g${i}`} fg={STATUS_COLOR[r.status]}>{`${STATUS_GLYPH[r.status]} `}</span>,

@@ -2,19 +2,7 @@
 
 A terminal calendar for your cron jobs. See **when** everything runs — in a month or week view — instead of squinting at five-field expressions.
 
-```
- cronview June 2026 · month                            next: today 13:00 health-check…
-  Sun          Mon          Tue          Wed          Thu          Fri          Sat
-  31 ×104       1 ×104       2 ×103       3 ×103       4 ×103       5 ×103       6 ×102
-  ●●●●●●       ●●●●●●       ●●●●●        ●●●●●        ●●●●●        ●●●●●        ●●●●
-   7 ×104       8 ×103       9 ×103     10* ×103      11 ×103      12 ×103      13 ×102
-  ●●●●●●       ●●●●●        ●●●●●        ●●●●●        ●●●●●        ●●●●●        ●●●●
- ─────────────────────────────────────────────────────────────────────────────────────
- Wednesday, June 10, 2026 — 5 jobs, 103 runs
- 1 ● 00:00 ×96         */15 * * * *      /usr/local/bin/health-check --ping
- 2 ● 02:30             30 2 * * *        /usr/local/bin/backup --incremental
- 3 ● 09:00             0 9 * * 1-5       $HOME/scripts/standup-reminder.sh
-```
+![cronview demo: month and week views, the job view with a plain-English schedule and run history, filtering, and the help card](assets/demo.gif)
 
 Built with [OpenTUI](https://github.com/anomalyco/opentui) and [cron-parser](https://github.com/harrisiirak/cron-parser).
 
