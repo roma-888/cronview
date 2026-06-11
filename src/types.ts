@@ -11,6 +11,10 @@ export interface CronJob {
   color: string;
   /** IANA zone from a preceding CRON_TZ= line; runs are scheduled in it. */
   tz?: string;
+  /** Run-as user (system crontabs only). */
+  user?: string;
+  /** Origin file for system crontab jobs, e.g. "/etc/cron.d/certbot". */
+  source?: string;
 }
 
 export interface RebootJob {

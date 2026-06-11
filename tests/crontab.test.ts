@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseCrontab, jobColor } from "../src/crontab";
+import { mergeResults, parseCrontab, jobColor } from "../src/crontab";
 
 const sample = readFileSync(join(import.meta.dir, "../examples/sample.crontab"), "utf8");
 
@@ -101,5 +101,76 @@ describe("CRON_TZ", () => {
   test("plain TZ does not affect scheduling", () => {
     const r = parseCrontab(["TZ=UTC", "0 9 * * * job"].join("\n"));
     expect(r.jobs[0]!.tz).toBeUndefined();
+  });
+});
+
+describe("parseCrontab (system format)", () => {
+  test("six fields: run-as user sits between schedule and command", () => {
+    const r = parseCrontab("30 2 * * * root /usr/local/bin/backup.sh --full", {
+      system: true,
+      source: "/etc/crontab",
+    });
+    expect(r.jobs).toHaveLength(1);
+    expect(r.jobs[0]).toMatchObject({
+      expression: "30 2 * * *",
+      user: "root",
+      command: "/usr/local/bin/backup.sh --full",
+      source: "/etc/crontab",
+    });
+  });
+
+  test("@alias lines also carry a user", () => {
+    const r = parseCrontab("@daily www-data /usr/bin/cleanup", { system: true });
+    expect(r.jobs[0]).toMatchObject({
+      expression: "0 0 * * *",
+      user: "www-data",
+      command: "/usr/bin/cleanup",
+    });
+  });
+
+  test("a user with no command is a warning", () => {
+    const r = parseCrontab("30 2 * * * root", { system: true });
+    expect(r.jobs).toHaveLength(0);
+    expect(r.warnings).toHaveLength(1);
+  });
+
+  test("@reboot in system format strips the user from the command", () => {
+    const r = parseCrontab("@reboot root /sbin/start-agent", { system: true });
+    expect(r.reboots[0]!.command).toBe("/sbin/start-agent");
+  });
+
+  test("personal format is unaffected: no user field", () => {
+    const r = parseCrontab("30 2 * * * backup --full");
+    expect(r.jobs[0]!.user).toBeUndefined();
+    expect(r.jobs[0]!.command).toBe("backup --full");
+  });
+});
+
+describe("mergeResults", () => {
+  test("re-ids jobs across sources and keeps source labels", () => {
+    const mine = parseCrontab("0 9 * * * my-job");
+    const sys = parseCrontab("30 2 * * * root sys-job", { system: true, source: "/etc/crontab" });
+    const m = mergeResults([mine, sys]);
+    expect(m.jobs.map((j) => j.id)).toEqual([0, 1]);
+    expect(m.jobs[0]!.source).toBeUndefined();
+    expect(m.jobs[1]!.source).toBe("/etc/crontab");
+    expect(m.jobs[0]!.color).not.toBe(m.jobs[1]!.color);
+  });
+
+  test("CRON_TZ stays scoped to its own file", () => {
+    const mine = parseCrontab("CRON_TZ=UTC\n0 9 * * * tz-job");
+    const sys = parseCrontab("0 9 * * * root plain-job", { system: true });
+    const m = mergeResults([mine, sys]);
+    expect(m.jobs[0]!.tz).toBe("UTC");
+    expect(m.jobs[1]!.tz).toBeUndefined();
+  });
+
+  test("warnings and reboots concatenate; first source's env wins", () => {
+    const a = parseCrontab("HOME=/Users/me\nbadline\n@reboot mine");
+    const b = parseCrontab("HOME=/root\n@reboot root sys", { system: true });
+    const m = mergeResults([a, b]);
+    expect(m.warnings).toHaveLength(1);
+    expect(m.reboots).toHaveLength(2);
+    expect(m.env.HOME).toBe("/Users/me");
   });
 });

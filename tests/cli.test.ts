@@ -30,6 +30,12 @@ describe("parseArgs", () => {
     expect(o.hours).toBe("12");
   });
 
+  test("--system turns on system crontabs", () => {
+    expect(opts().system).toBe(false);
+    expect(opts("--system").system).toBe(true);
+    expect(opts("-s").system).toBe(true);
+  });
+
   test("--editor stores the command", () => {
     expect(opts("--editor", "nano").editor).toBe("nano");
     expect(opts("--editor", "code -w").editor).toBe("code -w");

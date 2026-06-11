@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { CronExpressionParser } from "cron-parser";
 import type { CronJob, ParseResult, RebootJob, ParseWarning } from "./types";
 
@@ -33,7 +33,14 @@ export function jobColor(id: number): string {
 const ENV_LINE = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/;
 const FIVE_FIELDS = /^(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+(.+)$/;
 
-export function parseCrontab(text: string): ParseResult {
+export interface ParseOptions {
+  /** System crontab format: a run-as user field between schedule and command. */
+  system?: boolean;
+  /** Origin label attached to jobs, e.g. "/etc/cron.d/certbot". */
+  source?: string;
+}
+
+export function parseCrontab(text: string, opts: ParseOptions = {}): ParseResult {
   const jobs: CronJob[] = [];
   const reboots: RebootJob[] = [];
   const warnings: ParseWarning[] = [];
@@ -53,14 +60,18 @@ export function parseCrontab(text: string): ParseResult {
     if (line.startsWith("@")) {
       const space = line.search(/\s/);
       const alias = space === -1 ? line : line.slice(0, space);
-      const command = space === -1 ? "" : line.slice(space).trim();
+      let rest = space === -1 ? "" : line.slice(space).trim();
+      let user: string | undefined;
+      if (opts.system && rest) {
+        ({ user, rest } = splitUser(rest));
+      }
       if (alias === "@reboot") {
-        if (command) reboots.push({ command, line: lineNo });
+        if (rest) reboots.push({ command: rest, line: lineNo });
         else warnings.push({ line: lineNo, text: raw, error: "@reboot with no command" });
         continue;
       }
       const expression = ALIASES[alias];
-      if (!expression || !command) {
+      if (!expression || !rest) {
         warnings.push({
           line: lineNo,
           text: raw,
@@ -68,7 +79,7 @@ export function parseCrontab(text: string): ParseResult {
         });
         continue;
       }
-      addJob(jobs, line.startsWith(alias) ? alias : line, expression, command, lineNo, cronTz);
+      addJob(jobs, alias, expression, rest, lineNo, cronTz, user, opts.source);
       continue;
     }
 
@@ -91,11 +102,23 @@ export function parseCrontab(text: string): ParseResult {
 
     const fieldsMatch = FIVE_FIELDS.exec(line);
     if (!fieldsMatch) {
-      warnings.push({ line: lineNo, text: raw, error: "expected 5 schedule fields + command" });
+      warnings.push({
+        line: lineNo,
+        text: raw,
+        error: `expected 5 schedule fields + ${opts.system ? "user + " : ""}command`,
+      });
       continue;
     }
     const expression = fieldsMatch[1]!.replace(/\s+/g, " ");
-    const command = fieldsMatch[2]!.trim();
+    let command = fieldsMatch[2]!.trim();
+    let user: string | undefined;
+    if (opts.system) {
+      ({ user, rest: command } = splitUser(command));
+      if (!command) {
+        warnings.push({ line: lineNo, text: raw, error: "expected a command after the user" });
+        continue;
+      }
+    }
     try {
       CronExpressionParser.parse(expression);
     } catch (err) {
@@ -106,9 +129,40 @@ export function parseCrontab(text: string): ParseResult {
       });
       continue;
     }
-    addJob(jobs, expression, expression, command, lineNo, cronTz);
+    addJob(jobs, expression, expression, command, lineNo, cronTz, user, opts.source);
   }
 
+  return { jobs, reboots, warnings, env };
+}
+
+/** Pull the leading run-as user off a system crontab line's tail. */
+function splitUser(s: string): { user: string; rest: string } {
+  const space = s.search(/\s/);
+  if (space === -1) return { user: s, rest: "" };
+  return { user: s.slice(0, space), rest: s.slice(space).trim() };
+}
+
+/**
+ * Merge crontabs from several files into one result: jobs are re-numbered
+ * (and re-colored) across the whole set, and the first source's env wins so
+ * the personal crontab's variables take precedence for path expansion.
+ */
+export function mergeResults(results: ParseResult[]): ParseResult {
+  const jobs: CronJob[] = [];
+  const reboots: RebootJob[] = [];
+  const warnings: ParseWarning[] = [];
+  const env: Record<string, string> = {};
+  for (const r of results) {
+    for (const job of r.jobs) {
+      const id = jobs.length;
+      jobs.push({ ...job, id, color: jobColor(id) });
+    }
+    reboots.push(...r.reboots);
+    warnings.push(...r.warnings);
+    for (const [k, v] of Object.entries(r.env)) {
+      if (!(k in env)) env[k] = v;
+    }
+  }
   return { jobs, reboots, warnings, env };
 }
 
@@ -119,9 +173,11 @@ function addJob(
   command: string,
   line: number,
   tz: string | undefined,
+  user: string | undefined,
+  source: string | undefined,
 ): void {
   const id = jobs.length;
-  jobs.push({ id, schedule, expression, command, line, color: jobColor(id), tz });
+  jobs.push({ id, schedule, expression, command, line, color: jobColor(id), tz, user, source });
 }
 
 function stripQuotes(s: string): string {
@@ -149,4 +205,32 @@ export function loadUserCrontab(): string {
 
 export function loadCrontabFile(path: string): string {
   return readFileSync(path, "utf8");
+}
+
+/**
+ * Read the machine-wide crontabs: /etc/crontab plus /etc/cron.d/*.
+ * Unreadable or absent files are skipped — on macOS neither usually exists
+ * and the result is simply empty. Like cron itself, hidden files and names
+ * containing dots (editor backups, package leftovers) are ignored.
+ */
+export function loadSystemCrontabs(): Array<{ path: string; text: string }> {
+  const out: Array<{ path: string; text: string }> = [];
+  try {
+    out.push({ path: "/etc/crontab", text: readFileSync("/etc/crontab", "utf8") });
+  } catch {
+    // absent or unreadable
+  }
+  try {
+    for (const name of readdirSync("/etc/cron.d").sort()) {
+      if (name.startsWith(".") || name.includes(".") || name.endsWith("~")) continue;
+      try {
+        out.push({ path: `/etc/cron.d/${name}`, text: readFileSync(`/etc/cron.d/${name}`, "utf8") });
+      } catch {
+        // unreadable entry
+      }
+    }
+  } catch {
+    // no cron.d
+  }
+  return out;
 }

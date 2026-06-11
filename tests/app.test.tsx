@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { act } from "react";
 import { testRender } from "@opentui/react/test-utils";
-import { parseCrontab } from "../src/crontab";
+import { mergeResults, parseCrontab } from "../src/crontab";
 import { App } from "../src/ui/App";
 
 const sample = readFileSync(join(import.meta.dir, "../examples/sample.crontab"), "utf8");
@@ -720,6 +720,79 @@ describe("App (help overlay)", () => {
     });
     await setup.renderOnce();
     expect(setup.captureCharFrame()).toBe(before);
+    setup.renderer.destroy();
+  });
+});
+
+describe("App (system crontabs)", () => {
+  const merged = mergeResults([
+    parseCrontab("0 9 * * * my-own-job --daily"),
+    parseCrontab("30 2 * * * root system-backup --full", {
+      system: true,
+      source: "/etc/cron.d/backup",
+    }),
+  ]);
+
+  test("detail pane shows the run-as user for system jobs", async () => {
+    const setup = await testRender(
+      <App result={merged} initialView="month" initialDate={june10} source="crontab -l +1 system" />,
+      { width: 100, height: 38 },
+    );
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("root system-backup --full"); // user prefixes the command
+    expect(frame).toContain("my-own-job --daily"); // personal jobs unprefixed
+    setup.renderer.destroy();
+  });
+
+  test("job view shows the source file and user", async () => {
+    const setup = await testRender(
+      <App result={merged} initialView="month" initialDate={june10} source="test" />,
+      { width: 100, height: 38 },
+    );
+    await setup.renderOnce();
+    await act(async () => {
+      setup.mockInput.pressKey("1"); // 02:30 system job sorts first
+    });
+    await setup.renderOnce();
+    const overlay = setup.captureCharFrame();
+    expect(overlay).toContain("/etc/cron.d/backup");
+    expect(overlay).toContain("root");
+    setup.renderer.destroy();
+  });
+
+  test("a custom parseSource drives live reload for merged sources", async () => {
+    let text = "0 9 * * * first-job";
+    // Merges a system source in — reload must keep using THIS parser,
+    // or the marker job would vanish after the first refresh.
+    const parseSource = (t: string) =>
+      mergeResults([
+        parseCrontab(t),
+        parseCrontab("0 5 * * * root marker-system-job", { system: true, source: "/etc/sys" }),
+      ]);
+    const setup = await testRender(
+      <App
+        result={parseSource(text)}
+        initialView="month"
+        initialDate={june10}
+        source="test"
+        initialText={text}
+        readSource={() => text}
+        parseSource={parseSource}
+        pollMs={20}
+      />,
+      { width: 100, height: 38 },
+    );
+    await setup.renderOnce();
+    expect(setup.captureCharFrame()).toContain("first-job");
+    text = "0 9 * * * second-job";
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 120));
+    });
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("second-job");
+    expect(frame).toContain("marker-system-job"); // merged source survived the reload
     setup.renderer.destroy();
   });
 });

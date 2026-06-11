@@ -112,7 +112,9 @@ function JobLine({
 
   const timeCol = pad(time, 20);
   const schedCol = pad(info.job.schedule, 16);
-  const cmdWidth = Math.max(8, width - 6 - timeCol.length - schedCol.length - 4);
+  // System jobs carry their run-as user as a dim prefix on the command.
+  const userCol = info.job.user ? `${info.job.user} ` : "";
+  const cmdWidth = Math.max(8, width - 6 - timeCol.length - schedCol.length - 4 - userCol.length);
 
   return (
     <text>
@@ -120,6 +122,7 @@ function JobLine({
       <span fg={info.job.color}>{"● "}</span>
       <span fg={UI.text}>{timeCol}</span>
       <span fg={UI.dim}>{`${schedCol}  `}</span>
+      {userCol ? <span fg={UI.dim}>{userCol}</span> : null}
       <span fg={UI.text}>{truncate(info.job.command, cmdWidth)}</span>
     </text>
   );

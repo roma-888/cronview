@@ -3,7 +3,15 @@ import { spawnSync } from "node:child_process";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { CliError, HELP, VERSION, parseArgs, splitCommand, type CliOptions } from "./cli";
-import { loadCrontabFile, loadUserCrontab, parseCrontab } from "./crontab";
+import {
+  loadCrontabFile,
+  loadSystemCrontabs,
+  loadUserCrontab,
+  mergeResults,
+  parseCrontab,
+  type ParseOptions,
+} from "./crontab";
+import type { ParseResult } from "./types";
 import { fetchHistory } from "./history";
 import { App } from "./ui/App";
 
@@ -64,7 +72,34 @@ if (opts.file) {
   };
 }
 
-const result = parseCrontab(text);
+// --system merges the machine-wide crontabs in. The composite source text is
+// a JSON array of per-file sources so live reload sees any file change and
+// parseSource can re-parse each file in its own format (CRON_TZ stays scoped
+// per file, system files carry the extra run-as user field).
+interface SourceEntry extends ParseOptions {
+  text: string;
+}
+let parseSource: (t: string) => ParseResult = parseCrontab;
+if (opts.system) {
+  const readPersonal = readSource;
+  readSource = () =>
+    JSON.stringify([
+      { text: readPersonal() } satisfies SourceEntry,
+      ...loadSystemCrontabs().map(
+        (s): SourceEntry => ({ text: s.text, system: true, source: s.path }),
+      ),
+    ]);
+  parseSource = (t) =>
+    mergeResults(
+      (JSON.parse(t) as SourceEntry[]).map((s) =>
+        parseCrontab(s.text, { system: s.system, source: s.source }),
+      ),
+    );
+  text = readSource();
+  source = `${source} +${loadSystemCrontabs().length} system`;
+}
+
+const result = parseSource(text);
 
 // useMouse: false keeps the terminal's native mouse behavior (right-click menus,
 // text selection) — cronview is keyboard-only.
@@ -78,6 +113,7 @@ createRoot(renderer).render(
     initialHourFormat={opts.hours}
     initialText={text}
     readSource={readSource}
+    parseSource={parseSource}
     runEditor={runEditor}
     loadHistory={() => fetchHistory(7)}
   />,

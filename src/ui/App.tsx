@@ -35,6 +35,8 @@ interface AppProps {
   initialText?: string;
   /** Re-reads the crontab source; absent means live reload is off. */
   readSource?: () => string;
+  /** Turns readSource's text into a ParseResult (multi-source modes override). */
+  parseSource?: (text: string) => ParseResult;
   pollMs?: number;
   /** Runs the user's editor, blocking until it exits (the renderer is suspended). */
   runEditor?: () => void;
@@ -58,6 +60,7 @@ export function App({
   initialHourFormat = "24",
   initialText = "",
   readSource,
+  parseSource = parseCrontab,
   pollMs = 3000,
   runEditor,
   loadHistory,
@@ -135,8 +138,8 @@ export function App({
     }
     if (text === sourceText.current) return;
     sourceText.current = text;
-    setResult(parseCrontab(text));
-  }, [readSource]);
+    setResult(parseSource(text));
+  }, [readSource, parseSource]);
 
   useEffect(() => {
     if (!readSource) return;

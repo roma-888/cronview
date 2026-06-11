@@ -29,6 +29,7 @@ Options:
   -f, --file <path>     Read a crontab file instead of \`crontab -l\`
   -v, --view <mode>     Initial view: month (default) or week
   -d, --date <date>     Initial date, YYYY-MM-DD (default: today)
+  -s, --system          Also read /etc/crontab and /etc/cron.d/* (Linux)
       --hours <12|24>   Clock format (default: 24)
       --editor <cmd>    Editor for the e key (default: $VISUAL/$EDITOR, else vi)
   -h, --help            Show this help
@@ -80,6 +81,8 @@ export interface CliOptions {
   date: Date;
   hours: HourFormat;
   editor?: string;
+  /** Also read /etc/crontab and /etc/cron.d. */
+  system: boolean;
 }
 
 export type ParsedArgs =
@@ -88,7 +91,7 @@ export type ParsedArgs =
   | { kind: "options"; options: CliOptions };
 
 export function parseArgs(argv: string[]): ParsedArgs {
-  const opts: CliOptions = { view: "month", date: new Date(), hours: "24" };
+  const opts: CliOptions = { view: "month", date: new Date(), hours: "24", system: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     switch (arg) {
@@ -113,6 +116,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
         opts.view = value;
         break;
       }
+      case "-s":
+      case "--system":
+        opts.system = true;
+        break;
       case "--hours": {
         const value = argv[++i];
         if (value !== "12" && value !== "24") throw new CliError(`--hours must be "12" or "24"`);

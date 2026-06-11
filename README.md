@@ -29,6 +29,7 @@ To run from source instead you need [Bun](https://bun.sh) (OpenTUI is currently 
 ```sh
 cronview                     # your crontab (`crontab -l`), month view, today
 cronview --file path         # any crontab file
+cronview --system            # also /etc/crontab + /etc/cron.d/* (Linux)
 cronview --view week         # start in the week view
 cronview --date 2026-07-01   # start on a specific date
 cronview --hours 12          # 12-hour clock (default: 24)
@@ -81,6 +82,7 @@ Detail-pane rows are numbered; press a job's number to open everything about it:
 - `@reboot` jobs (shown in the status bar — they have no calendar position)
 - `NAME=value` environment lines and comments
 - `CRON_TZ=Zone` — jobs after it are scheduled in that timezone and shown at your local time (plain `TZ=` is deliberately ignored: it affects the command's environment, not the schedule)
+- System crontabs (`--system`): `/etc/crontab` and `/etc/cron.d/*` with their six-field format — the run-as user shows dimmed next to each job, and the job view names the source file. Unreadable or absent files are skipped quietly (macOS has none; Apple uses launchd)
 - Vixie-cron OR semantics when both day-of-month and day-of-week are restricted
 
 Unparsable lines never crash the app; they're counted in the status bar (`⚠ n lines skipped`).

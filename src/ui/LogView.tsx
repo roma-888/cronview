@@ -88,13 +88,17 @@ export function LogView({
     `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]!.slice(0, 3)} ${d.getDate()} ${formatHM(d, hourFormat)}`;
   const nextLabel = upcoming.map(runLabel).join(" · ");
 
+  // System jobs show who runs them and which file they came from.
+  const origin = job.source ? ` · ${job.user ? `${job.user} · ` : ""}${job.source}` : "";
+
   return (
     <box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
       <box style={{ height: 1, backgroundColor: UI.headerBg }}>
         <text>
           <span fg={UI.accent}>{" job "}</span>
           <span fg={job.color}>{"● "}</span>
-          <span fg={UI.text}>{truncate(job.command, Math.max(8, width - 8))}</span>
+          <span fg={UI.text}>{truncate(job.command, Math.max(8, width - origin.length - 8))}</span>
+          <span fg={UI.dim}>{origin}</span>
         </text>
       </box>
       <text>
