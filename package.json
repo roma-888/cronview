@@ -1,6 +1,6 @@
 {
   "name": "cronview",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Terminal calendar viewer for your cron jobs — see when everything runs in a month or week view",
   "type": "module",
   "bin": {
