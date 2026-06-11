@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CliError, parseArgs } from "../src/cli";
+import { CliError, parseArgs, splitCommand } from "../src/cli";
 
 function opts(...argv: string[]) {
   const parsed = parseArgs(argv);
@@ -45,4 +45,24 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["--hours", "13"])).toThrow(CliError);
     expect(() => parseArgs(["--bogus"])).toThrow(CliError);
   });
+});
+
+describe("splitCommand", () => {
+  test("splits on whitespace", () => {
+    expect(splitCommand("code -w")).toEqual(["code", "-w"]);
+    expect(splitCommand("nano")).toEqual(["nano"]);
+  });
+
+  test("quoted segments keep their spaces", () => {
+    expect(splitCommand('"/Applications/My Editor.app/bin/ed" -w')).toEqual([
+      "/Applications/My Editor.app/bin/ed",
+      "-w",
+    ]);
+    expect(splitCommand("'/opt/some editor' --flag")).toEqual(["/opt/some editor", "--flag"]);
+  });
+
+  test("collapses extra whitespace", () => {
+    expect(splitCommand("  code   -w  ")).toEqual(["code", "-w"]);
+  });
+
 });

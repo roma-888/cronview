@@ -136,4 +136,22 @@ describe("CRON_TZ scheduling", () => {
     expect(info!.hours).toEqual([16]); // viewer (UTC) hour, not the cron-zone hour 12
     expect(info!.minutes).toEqual([0]);
   });
+
+  test("DST fall-back shifts the run's absolute time, with one run per day", () => {
+    // Sun Nov 1 2026, America/New_York: 02:00 EDT → 01:00 EST.
+    // Noon NY is 16:00 UTC before the change, 17:00 UTC from that day on.
+    const days: Array<[Date, number]> = [
+      [new Date(2026, 9, 31), 16],
+      [new Date(2026, 10, 1), 17],
+      [new Date(2026, 10, 2), 17],
+    ];
+    for (const [day, utcHour] of days) {
+      const info = jobDayInfo(nyNoon, day);
+      expect(info).not.toBeNull();
+      expect(info!.count).toBe(1);
+      expect(info!.first.getTime()).toBe(
+        Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), utcHour),
+      );
+    }
+  });
 });

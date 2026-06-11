@@ -74,6 +74,9 @@ export function App({
   );
   const [logScroll, setLogScroll] = useState(0);
   const [history, setHistory] = useState<RunHistory | null>(null);
+  // History is fetched lazily on the first job-view open — the system-log
+  // query costs real CPU and most launches never look at run history.
+  const historyRequested = useRef(false);
   // Committed filter ("" = off) and the in-progress query buffer (null = not typing).
   const [filter, setFilter] = useState("");
   const [filterDraft, setFilterDraft] = useState<string | null>(null);
@@ -84,16 +87,6 @@ export function App({
     const q = filter.toLowerCase();
     return result.jobs.filter((j) => j.command.toLowerCase().includes(q));
   }, [result.jobs, filter]);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadHistory?.().then((h) => {
-      if (!cancelled) setHistory(h);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [loadHistory]);
 
   // Judge the open job's recent scheduled runs against the system log.
   const ran = useMemo(() => {
@@ -223,6 +216,10 @@ export function App({
     if (/^[1-9]$/.test(key.name)) {
       const info = shownInfos[Number(key.name) - 1];
       if (info) {
+        if (loadHistory && !historyRequested.current) {
+          historyRequested.current = true;
+          loadHistory().then(setHistory);
+        }
         const target = outputTarget(info.job.command, result.env);
         const tail = target.kind === "file" ? readLogTail(target.path) : null;
         setLog({ job: info.job, target, tail });

@@ -54,3 +54,17 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: dist/${{ matrix.asset }}
+
+  # Published after all binaries exist so the installer can verify downloads.
+  checksums:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate and upload SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern 'cronview-*' -D assets
+          cd assets
+          sha256sum cronview-* > SHA256SUMS
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber

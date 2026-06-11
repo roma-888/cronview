@@ -25,8 +25,36 @@ mkdir -p "$dir"
 progress="-s"
 if [ -t 2 ]; then progress="-#"; fi
 
+base="https://github.com/${REPO}/releases/latest/download"
+tmp="${dir}/.cronview.download"
+
 echo "downloading ${asset} (latest release)…"
-curl -fSL "$progress" "https://github.com/${REPO}/releases/latest/download/${asset}" -o "${dir}/cronview"
+curl -fSL "$progress" "${base}/${asset}" -o "$tmp"
+
+# Verify against the release's published checksums when available.
+if sums=$(curl -fsSL "${base}/SHA256SUMS" 2>/dev/null); then
+  expected=$(printf '%s\n' "$sums" | awk -v a="$asset" '$2 == a {print $1}')
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual=$(sha256sum "$tmp" | awk '{print $1}')
+  else
+    actual=$(shasum -a 256 "$tmp" | awk '{print $1}')
+  fi
+  if [ -z "$expected" ]; then
+    echo "note: ${asset} not in SHA256SUMS — skipping checksum verification"
+  elif [ "$expected" != "$actual" ]; then
+    rm -f "$tmp"
+    echo "cronview: checksum mismatch for ${asset}" >&2
+    echo "  expected ${expected}" >&2
+    echo "  got      ${actual}" >&2
+    exit 1
+  else
+    echo "✓ checksum verified"
+  fi
+else
+  echo "note: this release has no SHA256SUMS — skipping checksum verification"
+fi
+
+mv "$tmp" "${dir}/cronview"
 chmod +x "${dir}/cronview"
 
 echo "✓ installed ${dir}/cronview"

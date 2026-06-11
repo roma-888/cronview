@@ -42,6 +42,38 @@ The calendar also live-reloads within a few seconds when the crontab changes.
 
 export class CliError extends Error {}
 
+/** Split an editor command into argv words, honoring single/double quotes. */
+export function splitCommand(cmd: string): string[] {
+  const out: string[] = [];
+  let word = "";
+  let quote: string | null = null;
+  let inWord = false;
+  for (const c of cmd) {
+    if (quote) {
+      if (c === quote) quote = null;
+      else word += c;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      inWord = true;
+      continue;
+    }
+    if (c === " " || c === "\t") {
+      if (inWord) {
+        out.push(word);
+        word = "";
+        inWord = false;
+      }
+      continue;
+    }
+    word += c;
+    inWord = true;
+  }
+  if (inWord) out.push(word);
+  return out;
+}
+
 export interface CliOptions {
   file?: string;
   view: ViewMode;

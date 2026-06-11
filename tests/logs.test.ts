@@ -69,6 +69,19 @@ describe("outputTarget", () => {
     });
   });
 
+  test("> inside quotes is not a redirect", () => {
+    expect(outputTarget(`echo "a > b" | mail ops`, {})).toEqual({ kind: "mail" });
+    expect(outputTarget(`echo 'x >> y'`, {})).toEqual({ kind: "mail" });
+  });
+
+  test("a real redirect after a quoted > still wins", () => {
+    expect(outputTarget(`echo "a > b" >> /tmp/out.log`, {})).toEqual({
+      kind: "file",
+      path: "/tmp/out.log",
+      append: true,
+    });
+  });
+
   test("the last stdout redirect wins", () => {
     expect(outputTarget("a > /tmp/a.log && b >> /tmp/b.log", {})).toEqual({
       kind: "file",

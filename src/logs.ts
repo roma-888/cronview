@@ -6,34 +6,52 @@ export type OutputTarget =
   | { kind: "discard" }
   | { kind: "mail" };
 
-// A redirect operator with an optional fd prefix and its target word:
-// `>> path`, `> path`, `1> path`, `2>> path`, `&> path`, quoted paths included.
-const REDIRECT = /(\d?)(>>|>)\s*("(?:[^"]*)"|'(?:[^']*)'|\S+)/g;
-
 /**
- * Find the last stdout redirect in a command. Crontab `NAME=value` lines take
+ * Find the last stdout redirect in a command — `>> path`, `> path`, `1> path`
+ * (skipping `2>` stderr and `2>&1` dups), with quoted targets kept whole and
+ * `>` inside quoted arguments ignored. Crontab `NAME=value` lines take
  * precedence over the process environment when expanding `~` and `$VAR`s.
  */
 export function outputTarget(command: string, env: Record<string, string>): OutputTarget {
   let target: { path: string; append: boolean } | null = null;
-  for (const m of command.matchAll(REDIRECT)) {
-    const [, fd, op, word] = m as unknown as [string, string, string, string];
+  let quote: string | null = null;
+  for (let i = 0; i < command.length; i++) {
+    const c = command[i]!;
+    if (quote) {
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      continue;
+    }
+    if (c !== ">") continue;
+
+    const fd = /\d/.test(command[i - 1] ?? "") ? command[i - 1]! : "";
+    const append = command[i + 1] === ">";
+    let j = i + (append ? 2 : 1);
+    i = j - 1; // resume scanning after the operator either way
+    while (j < command.length && command[j] === " ") j++;
+    if (command[j] === "&") continue; // dup like 2>&1 / >&2, not a file
     if (fd === "2") continue; // stderr only
-    if (word.startsWith("&")) continue; // dup like 2>&1 / >&2, not a file
-    target = { path: unquote(word), append: op === ">>" };
+
+    let word = "";
+    const q = command[j];
+    if (q === '"' || q === "'") {
+      j++;
+      while (j < command.length && command[j] !== q) word += command[j++];
+      j++;
+    } else {
+      while (j < command.length && !/[\s>&|;]/.test(command[j]!)) word += command[j++];
+    }
+    if (!word) continue;
+    target = { path: word, append };
+    i = j - 1;
   }
   if (!target) return { kind: "mail" };
   const path = expand(target.path, env);
   if (path === "/dev/null") return { kind: "discard" };
   return { kind: "file", path, append: target.append };
-}
-
-function unquote(word: string): string {
-  const q = word[0];
-  if ((q === '"' || q === "'") && word.endsWith(q) && word.length >= 2) {
-    return word.slice(1, -1);
-  }
-  return word;
 }
 
 function expand(path: string, env: Record<string, string>): string {

@@ -2,7 +2,7 @@
 import { spawnSync } from "node:child_process";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
-import { CliError, HELP, VERSION, parseArgs, type CliOptions } from "./cli";
+import { CliError, HELP, VERSION, parseArgs, splitCommand, type CliOptions } from "./cli";
 import { loadCrontabFile, loadUserCrontab, parseCrontab } from "./crontab";
 import { fetchHistory } from "./history";
 import { App } from "./ui/App";
@@ -42,9 +42,10 @@ if (opts.file) {
   }
   source = file;
   readSource = () => loadCrontabFile(file);
-  // --editor may carry arguments ("code -w"); the file path goes last.
+  // --editor may carry arguments ("code -w") or quoted paths with spaces;
+  // the file path goes last.
   const editor = opts.editor ?? process.env.VISUAL ?? process.env.EDITOR ?? "vi";
-  const [cmd, ...args] = editor.split(/\s+/) as [string, ...string[]];
+  const [cmd = "vi", ...args] = splitCommand(editor);
   runEditor = () => {
     spawnSync(cmd, [...args, file], { stdio: "inherit" });
   };

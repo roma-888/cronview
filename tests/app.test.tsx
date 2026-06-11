@@ -434,6 +434,35 @@ describe("App (log peek)", () => {
     setup.renderer.destroy();
   });
 
+  test("history is fetched lazily, on the first job view open", async () => {
+    let fetches = 0;
+    const loadHistory = async () => {
+      fetches++;
+      return { records: [], coverageStart: new Date(0), fetchedAt: new Date() };
+    };
+    const setup = await testRender(
+      <App
+        result={logResult}
+        initialView="month"
+        initialDate={june10}
+        source="test"
+        loadHistory={loadHistory}
+      />,
+      { width: 100, height: 38 },
+    );
+    await setup.renderOnce();
+    await act(async () => {});
+    expect(fetches).toBe(0); // nothing spawned until the user asks for a job view
+    await press(setup, "1");
+    await act(async () => {});
+    expect(fetches).toBe(1);
+    await press(setup, "q");
+    await press(setup, "2");
+    await act(async () => {});
+    expect(fetches).toBe(1); // fetched once, reused after
+    setup.renderer.destroy();
+  });
+
   test("the job overlay shows run history with ran/missing marks", async () => {
     // logger-job is @daily; its most recent runs are at 00:00 today/yesterday.
     const today = new Date();
